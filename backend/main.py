@@ -7,6 +7,7 @@ from fastapi import FastAPI, HTTPException, Header, Path
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import async_db
+from consts import ATTACHMENT_EXCLUDE_REPEAT_COUNT
 from util import (
     check_token,
     exchange_code,
@@ -19,7 +20,10 @@ from models import *
 import traceback
 from cachetools import TTLCache
 
-token_cache = TTLCache(ttl=86400 * 7, maxsize=float("inf"))
+token_cache: TTLCache[str, str] = TTLCache(ttl=86400 * 7, maxsize=float("inf"))
+attachment_session_cache: TTLCache[str, List[str]] = TTLCache(
+    ttl=3600, maxsize=float("inf")
+)
 session = None
 
 CURRENT_YEAR = 2024
@@ -141,7 +145,21 @@ async def get_random_attachment(
     year: int = CURRENT_YEAR,
 ):
     check_token(token_cache, token)
-    return await async_db.get_random_attachment(year, video_only)
+    if token not in attachment_session_cache:
+        attachment_session_cache[token] = []
+
+    attachment = await async_db.get_random_attachment(
+        year, attachment_session_cache[token], video_only
+    )
+
+    if not attachment:
+        raise HTTPException(status_code=404, detail="No attachments found.")
+
+    attachment_session_cache[token].append(attachment.attachment_id)
+    if len(attachment_session_cache[token]) > ATTACHMENT_EXCLUDE_REPEAT_COUNT:
+        attachment_session_cache[token].pop(0)
+
+    return attachment
 
 
 @app.get("/attachment/view/{attachment_id}")

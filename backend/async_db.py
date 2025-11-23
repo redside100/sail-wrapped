@@ -34,23 +34,28 @@ async def cleanup():
         await conn.close()
 
 
-async def get_random_attachment(year: int, video_only: bool = False) -> AttachmentInfo:
-    where_clause = f"lower(extension) IN ({', '.join(['?' for _ in VIDEO_EXT_LIST])})"
-    default_exclude_clause = (
-        f"lower(extension) NOT IN ({', '.join(['?' for _ in EXCLUDED_EXTENSIONS])})"
-    )
+async def get_random_attachment(
+    year: int,
+    excluded_ids: List[str],
+    video_only: bool = False,
+) -> AttachmentInfo:
+    where_clause = f"lower(extension) IN ({', '.join(['?' for _ in VIDEO_EXT_LIST])}) AND id NOT IN ({', '.join(['?' for _ in (excluded_ids)])})"
+    default_exclude_clause = f"lower(extension) NOT IN ({', '.join(['?' for _ in EXCLUDED_EXTENSIONS])}) AND id NOT IN ({', '.join(['?' for _ in (excluded_ids)])})"
     if video_only:
         cursor = await conn.execute(
             f"SELECT id, file_name, author_id AS sender_id, author_name AS sender_handle, attachments.timestamp, related_message_id, channel_id, channel_name, content FROM attachments LEFT JOIN messages ON attachments.related_message_id = messages.message_id WHERE id IN (SELECT id FROM attachments WHERE {where_clause} AND year = ? ORDER BY RANDOM() LIMIT 1)",
-            [*VIDEO_EXT_LIST, year],
+            [*VIDEO_EXT_LIST, *excluded_ids, year],
         )
     else:
         cursor = await conn.execute(
             f"SELECT id, file_name, author_id AS sender_id, author_name AS sender_handle, attachments.timestamp, related_message_id, channel_id, channel_name, content FROM attachments LEFT JOIN messages ON attachments.related_message_id = messages.message_id WHERE id IN (SELECT id FROM attachments WHERE {default_exclude_clause} AND year = ? ORDER BY RANDOM() LIMIT 1)",
-            [*EXCLUDED_EXTENSIONS, year],
+            [*EXCLUDED_EXTENSIONS, *excluded_ids, year],
         )
 
     row = await cursor.fetchone()
+    if not row:
+        return None
+
     attachment_id = int(row[0])
     await cursor.close()
 

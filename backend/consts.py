@@ -53,5 +53,7 @@ ATTACHMENT_URL_BASE = (
     "https://redside.tor1.digitaloceanspaces.com/sw/{}/attachments/{}_{}"
 )
 AVATAR_URL_BASE = "https://redside.tor1.digitaloceanspaces.com/sw/{}/avatars/{}.png"
+ATTACHMENT_EXCLUDE_REPEAT_COUNT = 25
+
 with open("client_secret", "r") as f:
     CLIENT_SECRET = f.read()
