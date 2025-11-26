@@ -116,13 +116,12 @@ const MentionGraph = () => {
             <Box
               position="relative"
               height={{
-                xs: "350px",
+                xs: "300px",
                 sm: "600px",
               }}
               width={{
                 xs: "90vw",
-                sm: "700px",
-                md: "1000px",
+                md: "75vw",
               }}
               sx={{
                 boxShadow: "0px 0px 30px rgba(255, 255, 255, 0.4);",
