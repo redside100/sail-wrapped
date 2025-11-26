@@ -363,6 +363,16 @@ WHERE
     if not row:
         return None
 
+    most_mentioned_given_avatar_url = (
+        AVATAR_URL_BASE.format(year, row[9])
+        if year >= 2025
+        else get_default_discord_avatar_url(row[9])
+    )
+    most_mentioned_received_avatar_url = (
+        AVATAR_URL_BASE.format(year, row[10])
+        if year >= 2025
+        else get_default_discord_avatar_url(row[10])
+    )
     return UserStats(
         user_nickname=row[0],
         mentions_received=row[1],
@@ -375,6 +385,8 @@ WHERE
         most_frequent_time=row[8],
         most_mentioned_given_name=row[9],
         most_mentioned_received_name=row[10],
+        most_mentioned_given_avatar_url=most_mentioned_given_avatar_url,
+        most_mentioned_received_avatar_url=most_mentioned_received_avatar_url,
         most_mentioned_given_count=row[11],
         most_mentioned_received_count=row[12],
     )

@@ -450,11 +450,23 @@ const Stats = () => {
                             }
                             placement="top"
                           >
-                            <Link color={COLORS.LINK}>
-                              @
-                              {stats.user_stats.most_mentioned_given_name ||
-                                "???"}
-                            </Link>
+                            <Box display="flex" gap={1} alignItems="center">
+                              <Box
+                                component="img"
+                                src={
+                                  stats.user_stats
+                                    .most_mentioned_given_avatar_url
+                                }
+                                width={40}
+                                height={40}
+                                borderRadius={10}
+                              />
+                              <Link color={COLORS.LINK}>
+                                @
+                                {stats.user_stats.most_mentioned_given_name ||
+                                  "???"}
+                              </Link>
+                            </Box>
                           </Tooltip>
                         </Typography>
                       )
@@ -487,11 +499,23 @@ const Stats = () => {
                             }
                             placement="top"
                           >
-                            <Link color={COLORS.LINK}>
-                              @
-                              {stats.user_stats.most_mentioned_received_name ||
-                                "???"}
-                            </Link>
+                            <Box display="flex" gap={1} alignItems="center">
+                              <Box
+                                component="img"
+                                src={
+                                  stats.user_stats
+                                    .most_mentioned_received_avatar_url
+                                }
+                                width={40}
+                                height={40}
+                                borderRadius={10}
+                              />
+                              <Link color={COLORS.LINK}>
+                                @
+                                {stats.user_stats
+                                  .most_mentioned_received_name || "???"}
+                              </Link>
+                            </Box>
                           </Tooltip>
                         </Typography>
                       )

@@ -96,6 +96,8 @@ class UserStats(BaseModel):
     most_frequent_time: int
     most_mentioned_given_name: str
     most_mentioned_received_name: str
+    most_mentioned_given_avatar_url: str
+    most_mentioned_received_avatar_url: str
     most_mentioned_given_count: int
     most_mentioned_received_count: int
 
