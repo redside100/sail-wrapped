@@ -208,7 +208,7 @@ const Stats = () => {
                   (showServerStats
                     ? stats.global_stats.total_messages
                     : stats.user_stats.messages_sent) /
-                  (year % 4 == 0 ? 366 : 365)
+                  (year % 4 === 0 ? 366 : 365)
                 ).toFixed(2)} / day`}
               />
             </animated.div>

@@ -23,8 +23,9 @@ const HomeButton = ({
         backgroundColor: COLORS.BLURPLE,
         "&:hover": {
           backgroundColor: `${hoverColor} !important`,
+          transform: "translateY(-2px)",
         },
-        transition: "background-color 0.2s",
+        transition: "all 0.2s ease-in-out",
         userSelect: "none",
       }}
       borderRadius={5}

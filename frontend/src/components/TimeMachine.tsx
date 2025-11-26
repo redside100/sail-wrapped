@@ -218,7 +218,7 @@ const TimeMachine = () => {
             shiftStep={1}
             step={1}
             min={0}
-            max={365}
+            max={year % 4 === 0 ? 365 : 364}
             color="secondary"
             onChangeCommitted={(_: unknown, value: number | number[]) => {
               if (Array.isArray(value)) {
