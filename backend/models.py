@@ -100,6 +100,19 @@ class UserStats(BaseModel):
     most_mentioned_received_count: int
 
 
+class GlobalStats(BaseModel):
+    total_mentions: int
+    total_reactions: int
+    total_messages: int
+    total_attachments: int
+    total_attachments_size: int
+
+
+class StatsResponseModel(BaseModel):
+    user_stats: UserStats
+    global_stats: GlobalStats
+
+
 class TimeMachineScreenshot(BaseModel):
     messages: List[MessageInfo]
     attachments: List[AttachmentInfo]

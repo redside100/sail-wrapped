@@ -51,9 +51,10 @@ const GenericEntry = ({
         cursor: "pointer",
         backgroundColor: COLORS.BLURPLE,
         "&:hover": {
-          backgroundColor: "rgba(88, 101, 242, 0.6) !important",
+          backgroundColor: "rgba(88, 101, 242, 0.7) !important",
+          transform: "translateY(-2px)",
         },
-        transition: "background-color 0.2s",
+        transition: "all 0.2s ease-in-out",
         userSelect: "none",
         ...sx,
       }}

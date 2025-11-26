@@ -12,6 +12,7 @@ from consts import (
 from models import (
     AttachmentInfo,
     AttachmentSummary,
+    GlobalStats,
     MentionGraphEdge,
     MentionGraphResponse,
     MessageInfo,
@@ -376,6 +377,45 @@ WHERE
         most_mentioned_received_name=row[10],
         most_mentioned_given_count=row[11],
         most_mentioned_received_count=row[12],
+    )
+
+
+@AsyncTTL(time_to_live=86400, maxsize=None)
+async def get_global_stats(year: int):
+    query = """
+SELECT
+    SUM(mentions_received),
+    SUM(reactions_received),
+    SUM(messages_sent),
+    SUM(attachments_sent),
+    SUM(attachments_size)
+FROM
+    users
+WHERE year = ?;
+"""
+    async with conn.execute(
+        query,
+        (year,),
+    ) as cursor:
+        row = await cursor.fetchone()
+
+    if not row:
+        return None
+
+    (
+        total_mentions,
+        total_reactions,
+        total_messages,
+        total_attachments,
+        total_attachments_size,
+    ) = row
+
+    return GlobalStats(
+        total_mentions=total_mentions,
+        total_reactions=total_reactions,
+        total_messages=total_messages,
+        total_attachments=total_attachments,
+        total_attachments_size=total_attachments_size,
     )
 
 

@@ -1,7 +1,15 @@
 import { ReactNode, useContext, useEffect, useState } from "react";
 import { getStats } from "../api";
 import toast from "react-hot-toast";
-import { Box, Grid2, Link, Stack, Tooltip, Typography } from "@mui/material";
+import {
+  Box,
+  Checkbox,
+  Grid2,
+  Link,
+  Stack,
+  Tooltip,
+  Typography,
+} from "@mui/material";
 import { animated, useSprings } from "@react-spring/web";
 import {
   AccessTime,
@@ -16,7 +24,6 @@ import {
   Storage,
 } from "@mui/icons-material";
 import { UserContext } from "../App";
-import { LoadingAnimation } from "./LoadingPage";
 import { COLORS } from "../consts";
 
 const humanizeFileSize = (size: number) => {
@@ -44,9 +51,10 @@ const StatEntry = ({
       sx={{
         backgroundColor: COLORS.BLURPLE,
         "&:hover": {
-          backgroundColor: `rgba(88, 101, 242, 0.6) !important`,
+          backgroundColor: `rgba(88, 101, 242, 0.7) !important`,
+          transform: "translateY(-2px)",
         },
-        transition: "background-color 0.2s",
+        transition: "all 0.2s ease-in-out",
         userSelect: "none",
       }}
       borderRadius={3}
@@ -54,20 +62,28 @@ const StatEntry = ({
       <Stack gap={1} alignItems="center">
         <Box display="flex" gap={1} alignItems="center" justifyContent="center">
           {renderIcon()}
-          <Typography variant="h5">{title}</Typography>
+          <Typography variant="h5" noWrap>
+            {title}
+          </Typography>
         </Box>
-        {isFn ? content() : <Typography variant="h3">{content}</Typography>}
+        {isFn ? (
+          content()
+        ) : (
+          <Typography variant="h3" noWrap>
+            {content}
+          </Typography>
+        )}
       </Stack>
     </Box>
   );
 };
 
 const Stats = () => {
-  const [isLoading, setIsLoading] = useState(false);
   const [missingInfo, setMissingInfo] = useState(false);
   const [stats, setStats] = useState<any>(null);
+  const [showServerStats, setShowServerStats] = useState(false);
   const { user, year } = useContext(UserContext);
-  const [style] = useSprings(2, (idx: number) => ({
+  const [style] = useSprings(3, (idx: number) => ({
     from: {
       opacity: 0,
       y: 10,
@@ -97,14 +113,12 @@ const Stats = () => {
       const [res, status] = await getStats(token, year);
       if (status === 404) {
         setMissingInfo(true);
-        setIsLoading(false);
         return;
       } else if (status !== 200) {
         toast.error("Failed to get stats.");
         return;
       }
       setStats(res);
-      setIsLoading(false);
     };
     fetchStats();
   }, [year]);
@@ -120,15 +134,26 @@ const Stats = () => {
       <animated.div style={style[1]}>
         <Typography>
           Statistics about{" "}
-          <Link color={COLORS.LINK}>@{user.info.username}</Link> on Sail during{" "}
-          {year}
+          {showServerStats ? (
+            "Sail"
+          ) : (
+            <Link color={COLORS.LINK}>@{user.info.username}</Link>
+          )}{" "}
+          during {year}
         </Typography>
       </animated.div>
-      {isLoading && (
-        <Box mt={3}>
-          <LoadingAnimation />
+      <animated.div style={style[2]}>
+        <Box display="flex" alignItems="center" justifyContent="center" mt={2}>
+          <Checkbox
+            sx={{ color: "white", p: 0 }}
+            value={showServerStats}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setShowServerStats(e.target.checked)
+            }
+          />
+          <Typography ml={1}>Show server stats</Typography>
         </Box>
-      )}
+      </animated.div>
       {missingInfo && (
         <Box
           sx={{ backgroundColor: "rgba(0, 0, 0, 0.2) " }}
@@ -141,7 +166,7 @@ const Stats = () => {
           </Typography>
         </Box>
       )}
-      {!isLoading && !missingInfo && stats && (
+      {!missingInfo && stats && (
         <Grid2
           container
           spacing={2}
@@ -160,7 +185,11 @@ const Stats = () => {
               <StatEntry
                 renderIcon={() => <Message sx={{ color: "white" }} />}
                 title="Messages Sent"
-                content={stats.messages_sent}
+                content={
+                  showServerStats
+                    ? stats.global_stats.total_messages
+                    : stats.user_stats.messages_sent
+                }
               />
             </animated.div>
           </Grid2>
@@ -175,7 +204,12 @@ const Stats = () => {
               <StatEntry
                 renderIcon={() => <Keyboard sx={{ color: "white" }} />}
                 title="Message Frequency"
-                content={`~${(stats.messages_sent / 366).toFixed(2)} / day`}
+                content={`~${(
+                  (showServerStats
+                    ? stats.global_stats.total_messages
+                    : stats.user_stats.messages_sent) /
+                  (year % 4 == 0 ? 366 : 365)
+                ).toFixed(2)} / day`}
               />
             </animated.div>
           </Grid2>
@@ -190,7 +224,11 @@ const Stats = () => {
               <StatEntry
                 renderIcon={() => <AccessTime sx={{ color: "white" }} />}
                 title="Most Frequent Hour"
-                content={`${stats.most_frequent_time} UTC`}
+                content={
+                  showServerStats
+                    ? "--"
+                    : `${stats.user_stats.most_frequent_time} UTC`
+                }
               />
             </animated.div>
           </Grid2>
@@ -205,7 +243,11 @@ const Stats = () => {
               <StatEntry
                 renderIcon={() => <Attachment sx={{ color: "white" }} />}
                 title="Attachments Sent"
-                content={stats.attachments_sent}
+                content={
+                  showServerStats
+                    ? stats.global_stats.total_attachments
+                    : stats.user_stats.attachments_sent
+                }
               />
             </animated.div>
           </Grid2>
@@ -220,7 +262,11 @@ const Stats = () => {
               <StatEntry
                 renderIcon={() => <Storage sx={{ color: "white" }} />}
                 title="Total Attachments Size"
-                content={humanizeFileSize(stats.attachments_size)}
+                content={humanizeFileSize(
+                  showServerStats
+                    ? stats.global_stats.total_attachments_size
+                    : stats.user_stats.attachments_size
+                )}
               />
             </animated.div>
           </Grid2>
@@ -235,11 +281,23 @@ const Stats = () => {
               <StatEntry
                 renderIcon={() => <Storage sx={{ color: "white" }} />}
                 title="Avg. Attachment Size"
-                content={humanizeFileSize(
-                  stats.attachments_sent == 0
-                    ? 0
-                    : stats.attachments_size / stats.attachments_sent
-                )}
+                content={() => {
+                  const attachmentsSent = showServerStats
+                    ? stats.global_stats.total_attachments
+                    : stats.user_stats.attachments_sent;
+                  const attachmentsSize = showServerStats
+                    ? stats.global_stats.total_attachments_size
+                    : stats.user_stats.attachments_size;
+                  return (
+                    <Typography variant="h3">
+                      {humanizeFileSize(
+                        attachmentsSent == 0
+                          ? 0
+                          : attachmentsSize / attachmentsSent
+                      )}
+                    </Typography>
+                  );
+                }}
               />
             </animated.div>
           </Grid2>
@@ -254,7 +312,11 @@ const Stats = () => {
               <StatEntry
                 renderIcon={() => <AddReaction sx={{ color: "white" }} />}
                 title="Reactions Received"
-                content={stats.reactions_received}
+                content={
+                  showServerStats
+                    ? stats.global_stats.total_reactions
+                    : stats.user_stats.reactions_received
+                }
               />
             </animated.div>
           </Grid2>
@@ -269,7 +331,11 @@ const Stats = () => {
               <StatEntry
                 renderIcon={() => <AddReaction sx={{ color: "white" }} />}
                 title="Reactions Given"
-                content={stats.reactions_given}
+                content={
+                  showServerStats
+                    ? stats.global_stats.total_reactions
+                    : stats.user_stats.reactions_given
+                }
               />
             </animated.div>
           </Grid2>
@@ -285,10 +351,13 @@ const Stats = () => {
                 renderIcon={() => <Percent sx={{ color: "white" }} />}
                 title="Reaction Ratio"
                 content={
-                  stats.reactions_given == 0
+                  showServerStats
+                    ? "1.00"
+                    : stats.reactions_given == 0
                     ? 0
                     : (
-                        stats.reactions_received / stats.reactions_given
+                        stats.user_stats.reactions_received /
+                        stats.user_stats.reactions_given
                       ).toFixed(2)
                 }
               />
@@ -305,7 +374,11 @@ const Stats = () => {
               <StatEntry
                 renderIcon={() => <AlternateEmail sx={{ color: "white" }} />}
                 title="Mentions Received"
-                content={stats.mentions_received}
+                content={
+                  showServerStats
+                    ? stats.global_stats.total_mentions
+                    : stats.user_stats.mentions_received
+                }
               />
             </animated.div>
           </Grid2>
@@ -320,7 +393,11 @@ const Stats = () => {
               <StatEntry
                 renderIcon={() => <AlternateEmail sx={{ color: "white" }} />}
                 title="Mentions Given"
-                content={stats.mentions_given}
+                content={
+                  showServerStats
+                    ? stats.global_stats.total_mentions
+                    : stats.user_stats.mentions_given
+                }
               />
             </animated.div>
           </Grid2>
@@ -336,11 +413,14 @@ const Stats = () => {
                 renderIcon={() => <Percent sx={{ color: "white" }} />}
                 title="Mention Ratio"
                 content={
-                  stats.mentions_given == 0
+                  showServerStats
+                    ? "1.00"
+                    : stats.user_stats.mentions_given == 0
                     ? 0
-                    : (stats.mentions_received / stats.mentions_given).toFixed(
-                        2
-                      )
+                    : (
+                        stats.user_stats.mentions_received /
+                        stats.user_stats.mentions_given
+                      ).toFixed(2)
                 }
               />
             </animated.div>
@@ -355,23 +435,30 @@ const Stats = () => {
               <StatEntry
                 renderIcon={() => <Favorite sx={{ color: "white" }} />}
                 title="Most Mentioned"
-                content={() => (
-                  <Typography variant="h4">
-                    <Tooltip
-                      title={
-                        <Typography>
-                          You mentioned them in{" "}
-                          {stats.most_mentioned_given_count} of your messages
+                content={
+                  showServerStats
+                    ? "--"
+                    : () => (
+                        <Typography variant="h4">
+                          <Tooltip
+                            title={
+                              <Typography>
+                                You mentioned them in{" "}
+                                {stats.user_stats.most_mentioned_given_count} of
+                                your messages
+                              </Typography>
+                            }
+                            placement="top"
+                          >
+                            <Link color={COLORS.LINK}>
+                              @
+                              {stats.user_stats.most_mentioned_given_name ||
+                                "???"}
+                            </Link>
+                          </Tooltip>
                         </Typography>
-                      }
-                      placement="top"
-                    >
-                      <Link color={COLORS.LINK}>
-                        @{stats.most_mentioned_given_name || "???"}
-                      </Link>
-                    </Tooltip>
-                  </Typography>
-                )}
+                      )
+                }
               />
             </animated.div>
           </Grid2>
@@ -385,24 +472,30 @@ const Stats = () => {
               <StatEntry
                 renderIcon={() => <Favorite sx={{ color: "white" }} />}
                 title="Most Mentioned By"
-                content={() => (
-                  <Typography variant="h4">
-                    <Tooltip
-                      title={
-                        <Typography>
-                          They mentioned you in{" "}
-                          {stats.most_mentioned_received_count} of their
-                          messages
+                content={
+                  showServerStats
+                    ? "--"
+                    : () => (
+                        <Typography variant="h4">
+                          <Tooltip
+                            title={
+                              <Typography>
+                                They mentioned you in{" "}
+                                {stats.user_stats.most_mentioned_received_count}{" "}
+                                of their messages
+                              </Typography>
+                            }
+                            placement="top"
+                          >
+                            <Link color={COLORS.LINK}>
+                              @
+                              {stats.user_stats.most_mentioned_received_name ||
+                                "???"}
+                            </Link>
+                          </Tooltip>
                         </Typography>
-                      }
-                      placement="top"
-                    >
-                      <Link color={COLORS.LINK}>
-                        @{stats.most_mentioned_received_name || "???"}
-                      </Link>
-                    </Tooltip>
-                  </Typography>
-                )}
+                      )
+                }
               />
             </animated.div>
           </Grid2>

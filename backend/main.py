@@ -253,11 +253,18 @@ async def stats(
     year: int = CURRENT_YEAR,
 ):
     check_token(token_cache, token)
-    stats = await async_db.get_stats(token_cache[token], year)
-    if not stats:
+    user_stats = await async_db.get_stats(token_cache[token], year)
+    if not user_stats:
         raise HTTPException(status=404, detail="No stats found for user.")
 
-    return stats
+    global_stats = await async_db.get_global_stats(year)
+    if not global_stats:
+        raise HTTPException(status=404, detail="No global stats found.")
+
+    return StatsResponseModel(
+        user_stats=user_stats,
+        global_stats=global_stats,
+    )
 
 
 @app.get("/time_machine/{date}")
