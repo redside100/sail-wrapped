@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 import time
 from typing import Dict, List, Optional
 import aiosqlite
-from util import get_avatar_url, get_default_discord_avatar_url
+from util import get_avatar_url
 from consts import (
     ATTACHMENT_URL_BASE,
     EXCLUDED_EXTENSIONS,
