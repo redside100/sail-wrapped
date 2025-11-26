@@ -94,15 +94,31 @@ const GenericEntry = ({
             <Typography variant="h5" noWrap>
               {entryType === "attachment" && displayName}
               {entryType === "message" && (
-                <Link color={COLORS.LINK}>@{entryInfo?.sender_handle}</Link>
+                <Box display="flex" alignItems="center" gap={1}>
+                  <Box
+                    component="img"
+                    src={entryInfo?.sender_avatar_url}
+                    width={28}
+                    height={28}
+                    borderRadius={10}
+                  />
+                  <Link color={COLORS.LINK}>@{entryInfo?.sender_handle}</Link>
+                </Box>
               )}
             </Typography>
             <Typography noWrap>
               {entryType === "attachment" && (
-                <>
-                  Sent by{" "}
+                <Box display="flex" alignItems="center" gap={0.5}>
+                  <Typography noWrap>Sent by</Typography>
+                  <Box
+                    component="img"
+                    src={entryInfo?.sender_avatar_url}
+                    width={20}
+                    height={20}
+                    borderRadius={10}
+                  />
                   <Link color={COLORS.LINK}>@{entryInfo?.sender_handle}</Link>
-                </>
+                </Box>
               )}
               {entryType === "message" &&
                 getTruncatedString(entryInfo?.content, 128)}

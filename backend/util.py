@@ -1,6 +1,12 @@
 import aiohttp
 from fastapi import HTTPException
-from consts import CLIENT_ID, CLIENT_SECRET, DISCORD_API_ENDPOINT, REDIRECT_URI
+from consts import (
+    AVATAR_URL_BASE,
+    CLIENT_ID,
+    CLIENT_SECRET,
+    DISCORD_API_ENDPOINT,
+    REDIRECT_URI,
+)
 
 
 async def verify_token(session: aiohttp.ClientSession, token: str):
@@ -73,6 +79,13 @@ def check_token(token_cache: dict, token: str):
         raise HTTPException(
             status_code=401, detail="Token expired or missing. Please login again."
         )
+
+
+def get_avatar_url(year: int, username: str) -> str:
+    if year >= 2025:
+        return AVATAR_URL_BASE.format(year, username)
+
+    return get_default_discord_avatar_url(username)
 
 
 def get_default_discord_avatar_url(username: str) -> str:

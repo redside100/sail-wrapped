@@ -203,9 +203,10 @@ async def get_random_message(
 async def get_message(
     message_id: Annotated[int, Path(title="The Messaged ID to retrieve")],
     token: Annotated[str | None, Header()] = None,
+    year: int = CURRENT_YEAR,
 ):
     check_token(token_cache, token)
-    message = await async_db.get_message(message_id)
+    message = await async_db.get_message(year, message_id)
     if not message:
         raise HTTPException(status_code=404, detail="Message not found")
     return message

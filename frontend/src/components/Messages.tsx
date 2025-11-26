@@ -19,7 +19,7 @@ import {
 } from "../api";
 import toast from "react-hot-toast";
 import { Favorite, FavoriteBorder, Message } from "@mui/icons-material";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import LinkIcon from "@mui/icons-material/Link";
 import ReactMarkdown from "react-markdown";
 import moment from "moment";
@@ -95,6 +95,8 @@ export const MessageContainer = ({
 
 const Messages = () => {
   const { viewMessageId } = useParams();
+  const [searchParams] = useSearchParams();
+
   const [isLoading, setIsLoading] = useState(false);
   const [minLength, setMinLength] = useState<number | null>(12);
   const [linksOnly, setLinksOnly] = useState(false);
@@ -115,14 +117,22 @@ const Messages = () => {
   const [userLikes, setUserLikes] = useState<any>(null);
   const [fetchedInfo, setFetchedInfo] = useState<any>(null);
   const [liked, setLiked] = useState(false);
+  const { year } = useContext(UserContext);
 
   useEffect(() => {
     if (!viewMessageId) {
       return;
     }
+    const requestedYear = searchParams.get("year")
+      ? Number(searchParams.get("year"))
+      : year;
     const fetchMessage = async () => {
       const token = localStorage.getItem("access_token") ?? "";
-      const [res, status] = await getMessage(token, viewMessageId);
+      const [res, status] = await getMessage(
+        token,
+        viewMessageId,
+        requestedYear
+      );
       if (status !== 200) {
         toast.error("Failed to get message.");
         return;
@@ -131,8 +141,6 @@ const Messages = () => {
     };
     fetchMessage();
   }, []);
-
-  const { year } = useContext(UserContext);
 
   // fetch/sync user message likes on load
   useEffect(() => {
@@ -295,18 +303,30 @@ const Messages = () => {
                   "YYYY-MM-DD [at] h:mm A"
                 )}
               </Typography>
-              <Typography textAlign="center">
-                Sent by{" "}
-                <Link color={COLORS.LINK}>@{messageInfo.sender_handle}</Link> in{" "}
+              <Box display="flex" alignItems="center" gap={0.5}>
+                <Typography>Sent by</Typography>
+                <Box
+                  component="img"
+                  src={messageInfo.sender_avatar_url}
+                  width={20}
+                  height={20}
+                  borderRadius={10}
+                />
+                <Typography>
+                  <Link color={COLORS.LINK}>@{messageInfo.sender_handle}</Link>
+                </Typography>
+                <Typography>in</Typography>
                 <Tooltip title="Click to view in Discord">
-                  <Link
-                    color={COLORS.LINK}
-                    href={`${SAIL_MSG_URL}/${messageInfo.channel_id}/${messageInfo.message_id}`}
-                  >
-                    #{messageInfo.channel_name}
-                  </Link>
+                  <Typography>
+                    <Link
+                      color={COLORS.LINK}
+                      href={`${SAIL_MSG_URL}/${messageInfo.channel_id}/${messageInfo.message_id}`}
+                    >
+                      #{messageInfo.channel_name}
+                    </Link>
+                  </Typography>
                 </Tooltip>
-              </Typography>
+              </Box>
               <Box display="flex" justifyContent="center" gap={2}>
                 <Tooltip title="Copy permalink">
                   <LinkIcon
@@ -319,7 +339,7 @@ const Messages = () => {
                     }}
                     onClick={() => {
                       navigator.clipboard.writeText(
-                        `${window.location.origin}/messages/view/${messageInfo.message_id}`
+                        `${window.location.origin}/messages/view/${messageInfo.message_id}?year=${year}`
                       );
                       toast.success("Copied permalink to clipboard");
                     }}

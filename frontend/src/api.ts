@@ -98,14 +98,21 @@ export const getRandomMessage = async (
   return [await res.json(), res.status];
 };
 
-export const getMessage = async (token: string, messageId: string) => {
-  const res = await fetch(`${API_BASE}/message/view/${messageId}`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      token,
-    },
-  });
+export const getMessage = async (
+  token: string,
+  messageId: string,
+  year: number
+) => {
+  const res = await fetch(
+    `${API_BASE}/message/view/${messageId}?year=${year}`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        token,
+      },
+    }
+  );
   return [await res.json(), res.status];
 };
 

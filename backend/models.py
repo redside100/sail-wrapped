@@ -21,6 +21,7 @@ class AttachmentInfo(BaseModel):
     url: str
     sender_id: str
     sender_handle: str
+    sender_avatar_url: str
     timestamp: str
     likes: int
     related_message_id: str
@@ -34,6 +35,7 @@ class AttachmentSummary(BaseModel):
     file_name: str
     url: str
     sender_handle: str
+    sender_avatar_url: str
     related_message_content: str
     related_channel_name: str
     likes: Optional[int] = None
@@ -45,6 +47,7 @@ class MessageInfo(BaseModel):
     content: str
     sender_id: str
     sender_handle: str
+    sender_avatar_url: str
     timestamp: int
     likes: int
     channel_id: str
@@ -55,6 +58,7 @@ class MessageSummary(BaseModel):
     message_id: str
     content: str
     sender_handle: str
+    sender_avatar_url: str
     channel_name: str
     likes: Optional[int] = None
     rank: Optional[int] = None

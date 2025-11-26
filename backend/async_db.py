@@ -2,10 +2,9 @@ from datetime import datetime, timezone
 import time
 from typing import Dict, List, Optional
 import aiosqlite
-from util import get_default_discord_avatar_url
+from util import get_avatar_url, get_default_discord_avatar_url
 from consts import (
     ATTACHMENT_URL_BASE,
-    AVATAR_URL_BASE,
     EXCLUDED_EXTENSIONS,
     VIDEO_EXT_LIST,
 )
@@ -68,6 +67,7 @@ async def get_random_attachment(
         url=ATTACHMENT_URL_BASE.format(year, attachment_id, row[1]),
         sender_id=str(row[2]),
         sender_handle=row[3],
+        sender_avatar_url=get_avatar_url(year, row[3]),
         likes=likes,
         timestamp=row[4],
         related_message_id=str(row[5]),
@@ -108,16 +108,17 @@ IN (SELECT message_id FROM messages WHERE content_length >= ? AND year = ? {wher
         channel_name=row[2],
         sender_id=str(row[3]),
         sender_handle=row[4],
+        sender_avatar_url=get_avatar_url(year, row[4]),
         timestamp=row[5],
         likes=likes,
         channel_id=str(row[6]),
     )
 
 
-async def get_message(message_id: int) -> MessageInfo:
+async def get_message(year: int, message_id: int) -> MessageInfo:
     async with conn.execute(
-        "SELECT message_id, content, channel_name, author_id, author_name, timestamp, channel_id FROM messages WHERE message_id = ?",
-        (message_id,),
+        "SELECT message_id, content, channel_name, author_id, author_name, timestamp, channel_id FROM messages WHERE message_id = ? AND year = ?",
+        (message_id, year),
     ) as cursor:
         row = await cursor.fetchone()
 
@@ -131,6 +132,7 @@ async def get_message(message_id: int) -> MessageInfo:
         channel_name=row[2],
         sender_id=str(row[3]),
         sender_handle=row[4],
+        sender_avatar_url=get_avatar_url(year, row[4]),
         timestamp=row[5],
         likes=likes,
         channel_id=str(row[6]),
@@ -154,6 +156,7 @@ async def get_attachment(year: int, attachment_id: int) -> Optional[AttachmentIn
         url=ATTACHMENT_URL_BASE.format(year, attachment_id, row[1]),
         sender_id=str(row[2]),
         sender_handle=row[3],
+        sender_avatar_url=get_avatar_url(year, row[3]),
         likes=likes,
         timestamp=row[4],
         related_message_id=str(row[5]),
@@ -182,6 +185,7 @@ async def get_likes_for_user(year: int, discord_id: str) -> Dict[str, List[str]]
                 file_name=row[1],
                 url=ATTACHMENT_URL_BASE.format(year, row[0], row[1]),
                 sender_handle=row[2],
+                sender_avatar_url=get_avatar_url(year, row[2]),
                 related_message_content=row[3],
                 related_channel_name=row[4],
             )
@@ -192,6 +196,7 @@ async def get_likes_for_user(year: int, discord_id: str) -> Dict[str, List[str]]
                 message_id=str(row[0]),
                 content=row[1],
                 sender_handle=row[2],
+                sender_avatar_url=get_avatar_url(year, row[2]),
                 channel_name=row[3],
             )
             for row in message_rows
@@ -311,6 +316,7 @@ FROM
                 file_name=row[2],
                 url=ATTACHMENT_URL_BASE.format(year, row[1], row[2]),
                 sender_handle=row[3],
+                sender_avatar_url=get_avatar_url(year, row[3]),
                 related_message_content=row[4],
                 related_channel_name=row[5],
                 likes=row[6],
@@ -323,6 +329,7 @@ FROM
                 message_id=str(row[1]),
                 content=row[2],
                 sender_handle=row[3],
+                sender_avatar_url=get_avatar_url(year, row[3]),
                 channel_name=row[4],
                 likes=row[5],
                 rank=row[0],
@@ -363,16 +370,6 @@ WHERE
     if not row:
         return None
 
-    most_mentioned_given_avatar_url = (
-        AVATAR_URL_BASE.format(year, row[9])
-        if year >= 2025
-        else get_default_discord_avatar_url(row[9])
-    )
-    most_mentioned_received_avatar_url = (
-        AVATAR_URL_BASE.format(year, row[10])
-        if year >= 2025
-        else get_default_discord_avatar_url(row[10])
-    )
     return UserStats(
         user_nickname=row[0],
         mentions_received=row[1],
@@ -385,8 +382,8 @@ WHERE
         most_frequent_time=row[8],
         most_mentioned_given_name=row[9],
         most_mentioned_received_name=row[10],
-        most_mentioned_given_avatar_url=most_mentioned_given_avatar_url,
-        most_mentioned_received_avatar_url=most_mentioned_received_avatar_url,
+        most_mentioned_given_avatar_url=get_avatar_url(year, row[9]),
+        most_mentioned_received_avatar_url=get_avatar_url(year, row[10]),
         most_mentioned_given_count=row[11],
         most_mentioned_received_count=row[12],
     )
@@ -448,6 +445,7 @@ async def get_time_machine_screenshot(date: datetime, year: int):
                 url=ATTACHMENT_URL_BASE.format(year, row[0], row[1]),
                 sender_id=str(row[2]),
                 sender_handle=row[3],
+                sender_avatar_url=get_avatar_url(year, row[3]),
                 likes=0,
                 timestamp=row[4],
                 related_message_id=str(row[5]),
@@ -471,6 +469,7 @@ async def get_time_machine_screenshot(date: datetime, year: int):
                 channel_name=row[2],
                 sender_id=str(row[3]),
                 sender_handle=row[4],
+                sender_avatar_url=get_avatar_url(year, row[4]),
                 timestamp=row[5],
                 likes=0,
                 channel_id=str(row[6]),
@@ -493,17 +492,9 @@ async def get_mention_graph(year: int):
             username, mentioned_name, count = row
             edge = MentionGraphEdge(
                 from_user=username,
-                from_user_avatar_url=(
-                    AVATAR_URL_BASE.format(year, username)
-                    if year >= 2025
-                    else get_default_discord_avatar_url(username)
-                ),
+                from_user_avatar_url=get_avatar_url(year, username),
                 to_user=mentioned_name,
-                to_user_avatar_url=(
-                    AVATAR_URL_BASE.format(year, mentioned_name)
-                    if year >= 2025
-                    else get_default_discord_avatar_url(mentioned_name)
-                ),
+                to_user_avatar_url=get_avatar_url(year, mentioned_name),
                 count=count,
             )
             edges.append(edge)

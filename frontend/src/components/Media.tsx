@@ -318,18 +318,30 @@ const Media = () => {
               <Typography textAlign="center">
                 {moment(mediaInfo.timestamp).format("YYYY-MM-DD [at] h:mm A")}
               </Typography>
-              <Typography textAlign="center">
-                Sent by{" "}
-                <Link color={COLORS.LINK}>@{mediaInfo.sender_handle}</Link> in{" "}
+              <Box display="flex" alignItems="center" gap={0.5}>
+                <Typography>Sent by</Typography>
+                <Box
+                  component="img"
+                  src={mediaInfo.sender_avatar_url}
+                  width={20}
+                  height={20}
+                  borderRadius={10}
+                />
+                <Typography>
+                  <Link color={COLORS.LINK}>@{mediaInfo.sender_handle}</Link>
+                </Typography>
+                <Typography>in</Typography>
                 <Tooltip title="Click to view in Discord">
-                  <Link
-                    color={COLORS.LINK}
-                    href={`${SAIL_MSG_URL}/${mediaInfo.related_channel_id}/${mediaInfo.related_message_id}`}
-                  >
-                    #{mediaInfo.related_channel_name}
-                  </Link>
+                  <Typography>
+                    <Link
+                      color={COLORS.LINK}
+                      href={`${SAIL_MSG_URL}/${mediaInfo.related_channel_id}/${mediaInfo.related_message_id}`}
+                    >
+                      #{mediaInfo.related_channel_name}
+                    </Link>
+                  </Typography>
                 </Tooltip>
-              </Typography>
+              </Box>
               <Box display="flex" justifyContent="center" gap={2}>
                 <Tooltip title="Copy permalink">
                   <LinkIcon
