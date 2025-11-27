@@ -4,7 +4,7 @@ import toast from "react-hot-toast";
 import { animated, useSprings } from "@react-spring/web";
 import { Box, Pagination, Stack, Tab, Tabs, Typography } from "@mui/material";
 import { Favorite } from "@mui/icons-material";
-import { usePagination } from "../util";
+import { usePagination, usePersistedTabs } from "../util";
 import GenericEntry from "./GenericEntry";
 import { LoadingAnimation } from "./LoadingPage";
 import { UserContext } from "../App";
@@ -14,10 +14,10 @@ const MAX_PER_PAGE = 5;
 const Likes = () => {
   const [likes, setLikes] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [tab, setTab] = useState("Media");
+  const [tab, setTab] = usePersistedTabs("media");
 
   const listData = useMemo(
-    () => (tab === "Media" ? likes?.attachments : likes?.messages) ?? [],
+    () => (tab === "media" ? likes?.attachments : likes?.messages) ?? [],
     [tab, likes?.attachments, likes?.messages]
   );
   const [pageEntities, totalPages, page, setPage] = usePagination(
@@ -97,14 +97,14 @@ const Likes = () => {
                 mb: 3,
               }}
             >
-              <Tab label={<Typography>Media</Typography>} value="Media" />
-              <Tab label={<Typography>Messages</Typography>} value="Messages" />
+              <Tab label={<Typography>Media</Typography>} value="media" />
+              <Tab label={<Typography>Messages</Typography>} value="messages" />
             </Tabs>
           </animated.div>
           {pageEntities.map((entity, idx: number) => (
             <animated.div style={entryStyle[idx]} key={idx}>
               <GenericEntry
-                entryType={tab === "Media" ? "attachment" : "message"}
+                entryType={tab === "media" ? "attachment" : "message"}
                 entryInfo={entity}
               />
             </animated.div>
@@ -120,7 +120,7 @@ const Likes = () => {
                 borderRadius={3}
               >
                 <Typography variant="h5">
-                  You haven't liked any {tab === "Media" ? "media" : "messages"}{" "}
+                  You haven't liked any {tab === "media" ? "media" : "messages"}{" "}
                   yet.
                 </Typography>
               </Box>

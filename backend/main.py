@@ -12,6 +12,7 @@ from util import (
     check_token,
     exchange_code,
     get_token_info,
+    get_user_from_token,
     refresh_token,
     revoke_access_token,
     verify_token,
@@ -217,7 +218,9 @@ async def get_user_likes(
     token: Annotated[str | None, Header()] = None, year: int = CURRENT_YEAR
 ):
     check_token(token_cache, token)
-    return await async_db.get_likes_for_user(year, token_cache[token])
+    return await async_db.get_likes_for_user(
+        year, get_user_from_token(token_cache, token)
+    )
 
 
 @app.post("/like")
@@ -225,7 +228,7 @@ async def like(
     request: LikeRequestModel, token: Annotated[str | None, Header()] = None
 ):
     check_token(token_cache, token)
-    discord_id = token_cache[token]
+    discord_id = get_user_from_token(token_cache, token)
     await async_db.like(request.id, discord_id, request.is_attachment)
     return {"message": "Success"}
 
@@ -235,7 +238,7 @@ async def like(
     request: LikeRequestModel, token: Annotated[str | None, Header()] = None
 ):
     check_token(token_cache, token)
-    discord_id = token_cache[token]
+    discord_id = get_user_from_token(token_cache, token)
     await async_db.unlike(request.id, discord_id, request.is_attachment)
     return {"message": "Success"}
 
@@ -254,7 +257,8 @@ async def stats(
     year: int = CURRENT_YEAR,
 ):
     check_token(token_cache, token)
-    user_stats = await async_db.get_stats(token_cache[token], year)
+    discord_id = get_user_from_token(token_cache, token)
+    user_stats = await async_db.get_stats(discord_id, year)
     if not user_stats:
         raise HTTPException(status=404, detail="No stats found for user.")
 
@@ -264,7 +268,7 @@ async def stats(
 
     notable_content = await async_db.get_notable_content(
         year,
-        token_cache[token],
+        discord_id,
     )
     return StatsResponseModel(
         user_stats=user_stats,

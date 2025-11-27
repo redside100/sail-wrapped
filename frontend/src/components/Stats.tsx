@@ -6,7 +6,10 @@ import {
   Checkbox,
   Grid2,
   Link,
+  Pagination,
   Stack,
+  Tab,
+  Tabs,
   Tooltip,
   Typography,
 } from "@mui/material";
@@ -25,6 +28,8 @@ import {
 } from "@mui/icons-material";
 import { UserContext } from "../App";
 import { COLORS } from "../consts";
+import GenericEntry from "./GenericEntry";
+import { usePagination, usePersistedTabs } from "../util";
 
 const humanizeFileSize = (size: number) => {
   const i = size == 0 ? 0 : Math.floor(Math.log(size) / Math.log(1024));
@@ -78,23 +83,9 @@ const StatEntry = ({
   );
 };
 
-const Stats = () => {
-  const [missingInfo, setMissingInfo] = useState(false);
-  const [stats, setStats] = useState<any>(null);
+const StatsPage = ({ stats }: { stats: any }) => {
   const [showServerStats, setShowServerStats] = useState(false);
-  const { user, year } = useContext(UserContext);
-  const [style] = useSprings(3, (idx: number) => ({
-    from: {
-      opacity: 0,
-      y: 10,
-    },
-    to: {
-      opacity: 1,
-      y: 0,
-    },
-    delay: idx * 100,
-  }));
-
+  const { year } = useContext(UserContext);
   const [statStyle] = useSprings(14, (idx: number) => ({
     from: {
       opacity: 0,
@@ -106,43 +97,9 @@ const Stats = () => {
     },
     delay: idx * 70,
   }));
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      const token = localStorage.getItem("access_token") ?? "";
-      const [res, status] = await getStats(token, year);
-      if (status === 404) {
-        setMissingInfo(true);
-        return;
-      } else if (status !== 200) {
-        toast.error("Failed to get stats.");
-        return;
-      }
-      setStats(res);
-    };
-    fetchStats();
-  }, [year]);
-
   return (
-    <Stack justifyContent="center" alignItems="center" p={3}>
-      <animated.div style={style[0]}>
-        <Box display="flex" gap={1} alignItems="center" mt={2}>
-          <Insights sx={{ color: "white", fontSize: 40 }} />
-          <Typography variant="h3">Stats</Typography>
-        </Box>
-      </animated.div>
-      <animated.div style={style[1]}>
-        <Typography>
-          Statistics about{" "}
-          {showServerStats ? (
-            "Sail"
-          ) : (
-            <Link color={COLORS.LINK}>@{user.info.username}</Link>
-          )}{" "}
-          during {year}
-        </Typography>
-      </animated.div>
-      <animated.div style={style[2]}>
+    <>
+      <animated.div style={statStyle[0]}>
         <Box display="flex" alignItems="center" justifyContent="center" mt={2}>
           <Checkbox
             sx={{ color: "white", p: 0 }}
@@ -154,19 +111,7 @@ const Stats = () => {
           <Typography ml={1}>Show server stats</Typography>
         </Box>
       </animated.div>
-      {missingInfo && (
-        <Box
-          sx={{ backgroundColor: "rgba(0, 0, 0, 0.2) " }}
-          mt={3}
-          p={2}
-          borderRadius={3}
-        >
-          <Typography variant="h5">
-            There was no data found for your account...
-          </Typography>
-        </Box>
-      )}
-      {!missingInfo && stats && (
+      {stats && (
         <Grid2
           container
           spacing={2}
@@ -524,6 +469,140 @@ const Stats = () => {
             </animated.div>
           </Grid2>
         </Grid2>
+      )}
+    </>
+  );
+};
+
+const ContentPage = ({ stats }: { stats: any }) => {
+  const [entryStyle] = useSprings(10, (idx: number) => ({
+    from: {
+      opacity: 0,
+      y: 10,
+    },
+    to: {
+      opacity: 1,
+      y: 0,
+    },
+    delay: idx * 70,
+  }));
+  const [pageEntities, totalPages, page, setPage] = usePagination(
+    stats.notable_content,
+    5
+  );
+
+  return (
+    <>
+      <animated.div style={entryStyle[0]}>
+        <Typography mt={3}>
+          <em>Some interesting things you've sent!</em>
+        </Typography>
+      </animated.div>
+      <Stack gap={1} mt={2}>
+        {pageEntities.map((entry: any, idx: number) => (
+          <animated.div style={entryStyle[idx]} key={idx}>
+            <GenericEntry
+              entryType={entry.attachment_id ? "attachment" : "message"}
+              entryInfo={entry}
+              reactions={entry.total_reactions}
+            />
+          </animated.div>
+        ))}
+      </Stack>
+      {totalPages > 0 && (
+        <Pagination
+          count={totalPages}
+          page={page}
+          onChange={(_, value) => setPage(value)}
+          color="primary"
+          sx={{
+            "& .MuiPaginationItem-root": {
+              color: "#fff",
+            },
+            mt: 2,
+          }}
+        />
+      )}
+    </>
+  );
+};
+
+const Stats = () => {
+  const [missingInfo, setMissingInfo] = useState(false);
+  const [stats, setStats] = useState<any>(null);
+  const [tab, setTab] = usePersistedTabs("stats");
+  const { user, year } = useContext(UserContext);
+  const [style] = useSprings(4, (idx: number) => ({
+    from: {
+      opacity: 0,
+      y: 10,
+    },
+    to: {
+      opacity: 1,
+      y: 0,
+    },
+    delay: idx * 100,
+  }));
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      const token = localStorage.getItem("access_token") ?? "";
+      const [res, status] = await getStats(token, year);
+      if (status === 404) {
+        setMissingInfo(true);
+        return;
+      } else if (status !== 200) {
+        toast.error("Failed to get stats.");
+        return;
+      }
+      setStats(res);
+    };
+    fetchStats();
+  }, [year]);
+
+  return (
+    <Stack justifyContent="center" alignItems="center" p={3}>
+      <animated.div style={style[0]}>
+        <Box display="flex" gap={1} alignItems="center" mt={2}>
+          <Insights sx={{ color: "white", fontSize: 40 }} />
+          <Typography variant="h3">Stats</Typography>
+        </Box>
+      </animated.div>
+      <animated.div style={style[1]}>
+        <Typography>
+          Cool things about{" "}
+          <Link color={COLORS.LINK}>@{user.info.username}</Link> during {year}
+        </Typography>
+      </animated.div>
+      <animated.div style={style[2]}>
+        <Tabs
+          value={tab}
+          onChange={(_: unknown, value: string) => {
+            setTab(value);
+          }}
+          indicatorColor="secondary"
+        >
+          <Tab label={<Typography>Stats</Typography>} value="stats" />
+          {stats?.notable_content && (
+            <Tab label={<Typography>Content</Typography>} value="content" />
+          )}
+        </Tabs>
+      </animated.div>
+      {missingInfo && (
+        <Box
+          sx={{ backgroundColor: "rgba(0, 0, 0, 0.2) " }}
+          mt={3}
+          p={2}
+          borderRadius={3}
+        >
+          <Typography variant="h5">
+            There was no data found for your account...
+          </Typography>
+        </Box>
+      )}
+      {stats && !missingInfo && tab === "stats" && <StatsPage stats={stats} />}
+      {stats && !missingInfo && tab === "content" && (
+        <ContentPage stats={stats} />
       )}
     </Stack>
   );

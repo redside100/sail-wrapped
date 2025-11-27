@@ -1,3 +1,4 @@
+import os
 import aiohttp
 from fastapi import HTTPException
 from consts import (
@@ -7,6 +8,15 @@ from consts import (
     DISCORD_API_ENDPOINT,
     REDIRECT_URI,
 )
+
+USER_DEBUG_OVERRIDE = (
+    int(os.environ["USER_DEBUG_OVERRIDE"])
+    if "USER_DEBUG_OVERRIDE" in os.environ
+    else None
+)
+
+if USER_DEBUG_OVERRIDE:
+    print(f"USER_DEBUG_OVERRIDE is set to {USER_DEBUG_OVERRIDE}")
 
 
 async def verify_token(session: aiohttp.ClientSession, token: str):
@@ -79,6 +89,12 @@ def check_token(token_cache: dict, token: str):
         raise HTTPException(
             status_code=401, detail="Token expired or missing. Please login again."
         )
+
+
+def get_user_from_token(token_cache: dict, token: str) -> int:
+    if USER_DEBUG_OVERRIDE:
+        return USER_DEBUG_OVERRIDE
+    return token_cache[token]
 
 
 def get_avatar_url(year: int, username: str) -> str:

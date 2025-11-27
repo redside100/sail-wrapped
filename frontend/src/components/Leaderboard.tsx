@@ -4,7 +4,7 @@ import toast from "react-hot-toast";
 import { animated, useSprings } from "@react-spring/web";
 import { Box, Pagination, Stack, Tab, Tabs, Typography } from "@mui/material";
 import { Leaderboard as LeaderboardIcon } from "@mui/icons-material";
-import { usePagination } from "../util";
+import { usePagination, usePersistedTabs } from "../util";
 import GenericEntry from "./GenericEntry";
 import { LoadingAnimation } from "./LoadingPage";
 import { UserContext } from "../App";
@@ -14,11 +14,11 @@ const MAX_PER_PAGE = 5;
 const Leaderboard = () => {
   const [leaderboard, setLeaderboard] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [tab, setTab] = useState("Media");
+  const [tab, setTab] = usePersistedTabs("media");
 
   const listData = useMemo(
     () =>
-      (tab === "Media" ? leaderboard?.attachments : leaderboard?.messages) ??
+      (tab === "media" ? leaderboard?.attachments : leaderboard?.messages) ??
       [],
     [tab, leaderboard?.attachments, leaderboard?.messages]
   );
@@ -99,14 +99,14 @@ const Leaderboard = () => {
                 mb: 3,
               }}
             >
-              <Tab label={<Typography>Media</Typography>} value="Media" />
-              <Tab label={<Typography>Messages</Typography>} value="Messages" />
+              <Tab label={<Typography>Media</Typography>} value="media" />
+              <Tab label={<Typography>Messages</Typography>} value="messages" />
             </Tabs>
           </animated.div>
           {pageEntities.map((entity, idx: number) => (
             <animated.div style={entryStyle[idx]} key={idx}>
               <GenericEntry
-                entryType={tab === "Media" ? "attachment" : "message"}
+                entryType={tab === "media" ? "attachment" : "message"}
                 entryInfo={entity}
                 likes={entity.likes}
               />
@@ -114,7 +114,7 @@ const Leaderboard = () => {
           ))}
           {!loading &&
             leaderboard != null &&
-            (tab === "Media"
+            (tab === "media"
               ? leaderboard.attachments.length
               : leaderboard.messages.length) === 0 && (
               <Box
@@ -123,7 +123,7 @@ const Leaderboard = () => {
                 borderRadius={3}
               >
                 <Typography variant="h5">
-                  {tab === "Media"
+                  {tab === "media"
                     ? "There is no liked media yet."
                     : "There are no liked messages yet."}
                 </Typography>

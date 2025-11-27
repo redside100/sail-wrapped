@@ -3,18 +3,20 @@ import { COLORS, VIDEO_EXT_LIST } from "../consts";
 import { Box, Link, Stack, Typography } from "@mui/material";
 import { getTruncatedString } from "../util";
 import { useNavigate } from "react-router-dom";
-import { Favorite, VideoFile } from "@mui/icons-material";
+import { AddReaction, Favorite, VideoFile } from "@mui/icons-material";
 
 const GenericEntry = ({
   entryType,
   entryInfo,
   likes,
+  reactions,
   sx = {},
 }: {
   entryType: "attachment" | "message";
   entryInfo: any;
   rank?: number;
   likes?: number;
+  reactions?: number;
   sx?: any;
 }) => {
   const navigate = useNavigate();
@@ -88,6 +90,23 @@ const GenericEntry = ({
                 }}
               />
               <Typography>{likes}</Typography>
+            </Box>
+          )}
+          {reactions && (
+            <Box
+              display="flex"
+              justifyContent="center"
+              alignItems="center"
+              px={1}
+              pr={2}
+              gap={1}
+            >
+              <AddReaction
+                sx={{
+                  color: "white",
+                }}
+              />
+              <Typography>{reactions}</Typography>
             </Box>
           )}
           <Stack overflow="hidden" width="100%">
