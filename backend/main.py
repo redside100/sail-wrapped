@@ -260,11 +260,11 @@ async def stats(
     discord_id = get_user_from_token(token_cache, token)
     user_stats = await async_db.get_stats(discord_id, year)
     if not user_stats:
-        raise HTTPException(status=404, detail="No stats found for user.")
+        raise HTTPException(status_code=404, detail="No stats found for user.")
 
     global_stats = await async_db.get_global_stats(year)
     if not global_stats:
-        raise HTTPException(status=404, detail="No global stats found.")
+        raise HTTPException(status_code=404, detail="No global stats found.")
 
     notable_content = await async_db.get_notable_content(
         year,
