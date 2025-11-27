@@ -20,7 +20,7 @@ from models import *
 import traceback
 from cachetools import TTLCache
 
-token_cache: TTLCache[str, str] = TTLCache(ttl=86400 * 7, maxsize=float("inf"))
+token_cache: TTLCache[str, int] = TTLCache(ttl=86400 * 7, maxsize=float("inf"))
 attachment_session_cache: TTLCache[str, List[str]] = TTLCache(
     ttl=3600, maxsize=float("inf")
 )
@@ -262,9 +262,14 @@ async def stats(
     if not global_stats:
         raise HTTPException(status=404, detail="No global stats found.")
 
+    notable_content = await async_db.get_notable_content(
+        year,
+        token_cache[token],
+    )
     return StatsResponseModel(
         user_stats=user_stats,
         global_stats=global_stats,
+        notable_content=notable_content,
     )
 
 

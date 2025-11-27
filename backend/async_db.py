@@ -16,6 +16,8 @@ from models import (
     MentionGraphResponse,
     MessageInfo,
     MessageSummary,
+    NotableAttachmentSummary,
+    NotableMessageSummary,
     TimeMachineScreenshot,
     UserStats,
 )
@@ -426,6 +428,64 @@ WHERE year = ?;
         total_attachments=total_attachments,
         total_attachments_size=total_attachments_size,
     )
+
+
+@AsyncTTL(time_to_live=86400, maxsize=None)
+async def get_notable_content(
+    year: int, discord_id: int, n: int = 10
+) -> List[NotableAttachmentSummary | NotableMessageSummary]:
+    query = """
+SELECT messages.message_id, messages.content, messages.channel_name, messages.author_name, messages.total_reactions, attachments.id, attachments.file_name 
+FROM messages 
+LEFT JOIN attachments 
+ON messages.message_id = attachments.related_message_id 
+WHERE messages.year = ? 
+AND messages.author_id = ? 
+ORDER BY messages.total_reactions DESC 
+LIMIT ?;
+"""
+    async with conn.execute(
+        query,
+        (year, discord_id, n),
+    ) as cursor:
+        rows = await cursor.fetchall()
+        results = []
+        for row in rows:
+            (
+                message_id,
+                content,
+                channel_name,
+                author_name,
+                total_reactions,
+                attachment_id,
+                file_name,
+            ) = row
+            if not attachment_id:
+                results.append(
+                    NotableMessageSummary(
+                        message_id=str(message_id),
+                        content=content,
+                        sender_handle=author_name,
+                        sender_avatar_url=get_avatar_url(year, author_name),
+                        channel_name=channel_name,
+                        total_reactions=total_reactions,
+                    )
+                )
+            else:
+                results.append(
+                    NotableAttachmentSummary(
+                        attachment_id=str(attachment_id),
+                        file_name=file_name,
+                        url=ATTACHMENT_URL_BASE.format(year, attachment_id, file_name),
+                        sender_handle=author_name,
+                        sender_avatar_url=get_avatar_url(year, author_name),
+                        related_message_content=content,
+                        related_channel_name=channel_name,
+                        total_reactions=total_reactions,
+                    )
+                )
+
+        return results
 
 
 async def get_time_machine_screenshot(date: datetime, year: int):

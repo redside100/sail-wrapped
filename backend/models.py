@@ -42,6 +42,10 @@ class AttachmentSummary(BaseModel):
     rank: Optional[int] = None
 
 
+class NotableAttachmentSummary(AttachmentSummary):
+    total_reactions: int
+
+
 class MessageInfo(BaseModel):
     message_id: str
     content: str
@@ -62,6 +66,10 @@ class MessageSummary(BaseModel):
     channel_name: str
     likes: Optional[int] = None
     rank: Optional[int] = None
+
+
+class NotableMessageSummary(MessageSummary):
+    total_reactions: int
 
 
 class LikeRequestModel(BaseModel):
@@ -117,6 +125,7 @@ class GlobalStats(BaseModel):
 class StatsResponseModel(BaseModel):
     user_stats: UserStats
     global_stats: GlobalStats
+    notable_content: List[NotableAttachmentSummary | NotableMessageSummary]
 
 
 class TimeMachineScreenshot(BaseModel):

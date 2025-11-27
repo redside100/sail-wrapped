@@ -64,7 +64,7 @@ const DynamicMenuItem = ({
 );
 
 const MainView = () => {
-  const { user, setUser, year } = useContext(UserContext);
+  const { user, setUser } = useContext(UserContext);
   const doLogout = async () => {
     const token = localStorage.getItem("access_token") ?? "";
     localStorage.clear();
