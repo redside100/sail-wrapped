@@ -111,7 +111,7 @@ const Likes = () => {
           ))}
           {!loading &&
             likes != null &&
-            (tab === "Media"
+            (tab === "media"
               ? likes.attachments.length
               : likes.messages.length) === 0 && (
               <Box
