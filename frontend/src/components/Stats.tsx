@@ -30,6 +30,7 @@ import { UserContext } from "../App";
 import { COLORS } from "../consts";
 import GenericEntry from "./GenericEntry";
 import { usePagination, usePersistedTabs } from "../util";
+import { LoadingAnimation } from "./LoadingPage";
 
 const humanizeFileSize = (size: number) => {
   const i = size == 0 ? 0 : Math.floor(Math.log(size) / Math.log(1024));
@@ -531,6 +532,7 @@ const Stats = () => {
   const [missingInfo, setMissingInfo] = useState(false);
   const [stats, setStats] = useState<any>(null);
   const [tab, setTab] = usePersistedTabs("stats");
+  const [loading, setLoading] = useState(false);
   const { user, year } = useContext(UserContext);
   const [style] = useSprings(4, (idx: number) => ({
     from: {
@@ -547,15 +549,20 @@ const Stats = () => {
   useEffect(() => {
     const fetchStats = async () => {
       const token = localStorage.getItem("access_token") ?? "";
-      const [res, status] = await getStats(token, year);
-      if (status === 404) {
-        setMissingInfo(true);
-        return;
-      } else if (status !== 200) {
-        toast.error("Failed to get stats.");
-        return;
+      setLoading(true);
+      try {
+        const [res, status] = await getStats(token, year);
+        if (status === 404) {
+          setMissingInfo(true);
+          return;
+        } else if (status !== 200) {
+          toast.error("Failed to get stats.");
+          return;
+        }
+        setStats(res);
+      } finally {
+        setLoading(false);
       }
-      setStats(res);
     };
     fetchStats();
   }, [year]);
@@ -588,7 +595,12 @@ const Stats = () => {
           )}
         </Tabs>
       </animated.div>
-      {missingInfo && (
+      {loading && (
+        <Box mt={3}>
+          <LoadingAnimation />
+        </Box>
+      )}
+      {!loading && missingInfo && (
         <Box
           sx={{ backgroundColor: "rgba(0, 0, 0, 0.2) " }}
           mt={3}
@@ -600,8 +612,10 @@ const Stats = () => {
           </Typography>
         </Box>
       )}
-      {stats && !missingInfo && tab === "stats" && <StatsPage stats={stats} />}
-      {stats && !missingInfo && tab === "content" && (
+      {!loading && stats && !missingInfo && tab === "stats" && (
+        <StatsPage stats={stats} />
+      )}
+      {!loading && stats && !missingInfo && tab === "content" && (
         <ContentPage stats={stats} />
       )}
     </Stack>
