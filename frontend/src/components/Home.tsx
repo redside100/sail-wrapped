@@ -175,20 +175,6 @@ const Home = () => {
           </animated.div>
         </Grid2>
       </Grid2>
-      <Typography mt={3}>
-        <em>
-          (by the way, this project is open source on{" "}
-          <Link
-            color="#90caf9"
-            href="https://github.com/redside100/sail-wrapped-2024"
-            target="_blank"
-            rel="noopener"
-          >
-            GitHub
-          </Link>
-          !)
-        </em>
-      </Typography>
     </Stack>
   );
 };

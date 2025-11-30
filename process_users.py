@@ -14,7 +14,7 @@ print("Current year:", CURRENT_YEAR)
 all_messages = (
     conn.cursor()
     .execute(
-        f"SELECT author_id, author_name, author_nickname, author_avatar_url, content, timestamp, attachments, reactions, mentions, total_reactions FROM messages WHERE year = {CURRENT_YEAR} ORDER BY timestamp ASC"
+        f"SELECT author_id, author_name, author_nickname, author_avatar_url, content, timestamp, attachments, reactions, mentions, total_reactions, inline_emojis FROM messages WHERE year = {CURRENT_YEAR} ORDER BY timestamp ASC"
     )
     .fetchall()
 )
@@ -41,6 +41,7 @@ def init_user_if_not_exists(user_id, user_name, user_nickname, avatar_url):
             "attachments_size": 0,
             "mentions_given": {},
             "mentions_received": {},
+            "emojis": {},
         }
 
 
@@ -55,12 +56,13 @@ for i, row in enumerate(all_messages):
     user_name = row[1]
     user_nickname = row[2]
     user_avatar_url = row[3]
-    content = row[4]
+    content: str = row[4]
     timestamp = row[5]
     attachments = orjson.loads(row[6])
     reactions = orjson.loads(row[7])
     mentions = orjson.loads(row[8])
     total_reactions = row[9]
+    inline_emojis = orjson.loads(row[10])
 
     if user_name == "Deleted User":
         continue
@@ -77,7 +79,29 @@ for i, row in enumerate(all_messages):
 
     user_cache[user_id]["reactions_received"] += total_reactions
 
+    def init_emoji_for_user(emoji_id: str, target_user_id: int):
+        if emoji_id not in user_cache[target_user_id]["emojis"]:
+            user_cache[target_user_id]["emojis"][emoji_id] = {
+                "inline": 0,
+                "reactions": 0,
+                "native": emoji["id"] == "",
+                "animated": emoji["isAnimated"],
+            }
+
+    for emoji in inline_emojis:
+        is_native_emoji = emoji["id"] == ""
+        emoji_id = emoji["id"] or emoji["name"]
+        init_emoji_for_user(emoji_id, user_id)
+
+        emoji_code = emoji["name"] if is_native_emoji else f":{emoji["code"]}:"
+        inline_count = content.count(emoji_code)
+        user_cache[user_id]["emojis"][emoji_id]["inline"] += inline_count
+
     for reaction in reactions:
+        emoji = reaction["emoji"]
+        is_native_emoji = emoji["id"] == ""
+        emoji_id = emoji["id"] or emoji["name"]
+
         for user in reaction["users"]:
             if user["isBot"]:
                 continue
@@ -91,6 +115,9 @@ for i, row in enumerate(all_messages):
                 reactor_id, reactor_name, reactor_nickname, reactor_avatar_url
             )
             user_cache[reactor_id]["reactions_given"] += 1
+
+            init_emoji_for_user(emoji_id, reactor_id)
+            user_cache[reactor_id]["emojis"][emoji_id]["reactions"] += 1
 
     for mention in mentions:
         if mention["isBot"]:
@@ -130,13 +157,14 @@ for i, row in enumerate(all_messages):
         user_cache[user_id]["attachments_sent"] += 1
         user_cache[user_id]["attachments_size"] += attachment["fileSizeBytes"]
 
+
 print(f"Processing users ({len(user_cache)})")
 
 for user_id in user_cache:
     user = user_cache[user_id]
-    user_name = user_cache[user_id]["name"]
-    user_nickname = user_cache[user_id]["nickname"]
-    user_avatar_url = user_cache[user_id]["avatar_url"]
+    user_name = user["name"]
+    user_nickname = user["nickname"]
+    user_avatar_url = user["avatar_url"]
     mentions_received = user["mentions_received"]
     mentions_given = user["mentions_given"]
     reactions_received = user["reactions_received"]
@@ -190,8 +218,10 @@ for user_id in user_cache:
         else ""
     )
 
+    emoji_data = orjson.dumps(user["emojis"])
+
     conn.cursor().execute(
-        "INSERT OR REPLACE INTO users (user_id, user_name, user_nickname, user_avatar_url, mentions_received, mentions_given, reactions_received, reactions_given, messages_sent, attachments_sent, attachments_size, most_frequent_time, most_mentioned_given_name, most_mentioned_received_name, most_mentioned_given_id, most_mentioned_received_id, most_mentioned_given_count, most_mentioned_received_count, year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT OR REPLACE INTO users (user_id, user_name, user_nickname, user_avatar_url, mentions_received, mentions_given, reactions_received, reactions_given, messages_sent, attachments_sent, attachments_size, most_frequent_time, most_mentioned_given_name, most_mentioned_received_name, most_mentioned_given_id, most_mentioned_received_id, most_mentioned_given_count, most_mentioned_received_count, emoji_data, year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (
             user_id,
             user_name,
@@ -211,6 +241,7 @@ for user_id in user_cache:
             most_mentioned_received_id,
             most_mentioned_given_count,
             most_mentioned_received_count,
+            emoji_data,
             CURRENT_YEAR,
         ),
     )

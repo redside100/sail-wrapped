@@ -53,6 +53,9 @@ ATTACHMENT_URL_BASE = (
     "https://redside.tor1.digitaloceanspaces.com/sw/{}/attachments/{}_{}"
 )
 AVATAR_URL_BASE = "https://redside.tor1.digitaloceanspaces.com/sw/{}/avatars/{}.png"
+# png or gif
+EMOJI_URL_BASE = "https://redside.tor1.digitaloceanspaces.com/sw/{}/emojis/{}"
+
 ATTACHMENT_EXCLUDE_REPEAT_COUNT = 25
 
 with open("client_secret", "r") as f:

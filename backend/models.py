@@ -96,6 +96,15 @@ class AttachmentRequestModel(BaseModel):
     video_only: bool
 
 
+class UserEmojiEntry(BaseModel):
+    emoji_id: str
+    url: Optional[str]
+    native: bool
+    animated: bool
+    inline: int
+    reactions: int
+
+
 class UserStats(BaseModel):
     user_nickname: str
     mentions_received: int
@@ -112,6 +121,7 @@ class UserStats(BaseModel):
     most_mentioned_received_avatar_url: str
     most_mentioned_given_count: int
     most_mentioned_received_count: int
+    favourite_emojis: List[UserEmojiEntry]
 
 
 class GlobalStats(BaseModel):

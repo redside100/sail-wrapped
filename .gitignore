@@ -166,6 +166,7 @@ backend/client_secret
 export/*
 attachments/*
 avatars/*
+emojis/*
 plans.md
 frontend/*.tsbuildinfo
 docker_*.sh

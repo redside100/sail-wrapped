@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS "messages" (
 	"reactions"	BLOB,
 	"total_reactions"	INTEGER,
 	"mentions"	BLOB,
+	"inline_emojis" BLOB,
 	"channel_id"	INTEGER,
 	"channel_name"	TEXT,
 	"content_length"	INTEGER,
@@ -58,6 +59,7 @@ CREATE TABLE IF NOT EXISTS "users" (
 	"most_mentioned_received_id"	INTEGER,
 	"most_mentioned_given_count"	INTEGER,
 	"most_mentioned_received_count"	INTEGER,
+	"emoji_data" BLOB,
 	"year" INTEGER,
 );
 CREATE UNIQUE INDEX IF NOT EXISTS "idx_attachment_id_discord_id" ON "likes" (

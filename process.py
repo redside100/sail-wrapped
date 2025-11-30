@@ -15,6 +15,8 @@ CURRENT_YEAR = int(os.environ.get("CURRENT_YEAR", "2025"))
 
 print("Current year:", CURRENT_YEAR)
 
+seen_emojis = set()
+
 for i, file_name in enumerate(json_files):
     print(f"Processing file {i + 1}/{file_count} - {file_name}")
     with open(f"export/{file_name}", "r", encoding="utf-8") as f:
@@ -68,6 +70,7 @@ for i, file_name in enumerate(json_files):
             total_reactions = sum(
                 [reaction["count"] for reaction in message["reactions"]]
             )
+            inline_emojis = orjson.dumps(message["inlineEmojis"])
 
             t = (
                 message_id,
@@ -85,16 +88,34 @@ for i, file_name in enumerate(json_files):
                 reactions,
                 total_reactions,
                 mentions,
+                inline_emojis,
                 channel_id,
                 channel_name,
                 len(content),
                 CURRENT_YEAR,
             )
             conn.cursor().execute(
-                f"INSERT OR REPLACE INTO messages (message_id, type, timestamp, content, author_id, author_name, author_nickname, author_discriminator, author_avatar_url, attachments, embeds, stickers, reactions, total_reactions, mentions, channel_id, channel_name, content_length, year) VALUES "
-                + f"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                f"INSERT OR REPLACE INTO messages (message_id, type, timestamp, content, author_id, author_name, author_nickname, author_discriminator, author_avatar_url, attachments, embeds, stickers, reactions, total_reactions, mentions, inline_emojis, channel_id, channel_name, content_length, year) VALUES "
+                + f"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 t,
             )
+            if DOWNLOAD_ATTACHMENTS:
+                # emojis
+                all_emojis = message["inlineEmojis"] + [
+                    r["emoji"] for r in message["reactions"]
+                ]
+                for emoji in all_emojis:
+                    is_native_emoji = emoji["id"] == ""
+                    emoji_id = emoji["id"] or emoji["name"]
+                    if is_native_emoji or emoji_id in seen_emojis:
+                        continue
+                    seen_emojis.add(emoji_id)
+                    filename = emoji["imageUrl"].rsplit("/", 1)[-1]
+                    print(f"Writing emoji {emoji_id} {filename}")
+                    with open(f"emojis/{filename}", "wb+") as emoji_file:
+                        res = requests.get(emoji["imageUrl"])
+                        emoji_file.write(res.content)
+
             # attachments
             for attachment in message["attachments"]:
                 if DOWNLOAD_ATTACHMENTS:

@@ -2,9 +2,11 @@ from datetime import datetime, timezone
 import time
 from typing import Dict, List, Optional
 import aiosqlite
+import orjson
 from util import get_avatar_url
 from consts import (
     ATTACHMENT_URL_BASE,
+    EMOJI_URL_BASE,
     EXCLUDED_EXTENSIONS,
     VIDEO_EXT_LIST,
 )
@@ -19,6 +21,7 @@ from models import (
     NotableAttachmentSummary,
     NotableMessageSummary,
     TimeMachineScreenshot,
+    UserEmojiEntry,
     UserStats,
 )
 from cache import AsyncTTL
@@ -357,7 +360,8 @@ SELECT
     most_mentioned_given_name,
     most_mentioned_received_name,
     most_mentioned_given_count,
-    most_mentioned_received_count
+    most_mentioned_received_count,
+    emoji_data
 FROM
     users
 WHERE
@@ -372,6 +376,28 @@ WHERE
     if not row:
         return None
 
+    raw_emoji_data = row[13]
+    emoji_data = orjson.loads(raw_emoji_data) if raw_emoji_data is not None else {}
+    favourite_emojis: List[UserEmojiEntry] = []
+    for emoji_id in emoji_data:
+        entry = emoji_data[emoji_id]
+        extension = ".gif" if entry["animated"] else ".png"
+        url = (
+            EMOJI_URL_BASE.format(year, emoji_id) + extension
+            if not entry["native"]
+            else None
+        )
+        favourite_emojis.append(
+            UserEmojiEntry(
+                emoji_id=emoji_id,
+                url=url,
+                native=entry["native"],
+                animated=entry["animated"],
+                inline=entry["inline"],
+                reactions=entry["reactions"],
+            )
+        )
+    favourite_emojis.sort(key=lambda x: x.inline + x.reactions, reverse=True)
     return UserStats(
         user_nickname=row[0],
         mentions_received=row[1],
@@ -388,6 +414,7 @@ WHERE
         most_mentioned_received_avatar_url=get_avatar_url(year, row[10]),
         most_mentioned_given_count=row[11],
         most_mentioned_received_count=row[12],
+        favourite_emojis=favourite_emojis,
     )
 
 
