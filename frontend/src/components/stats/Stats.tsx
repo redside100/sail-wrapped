@@ -10,6 +10,7 @@ import { usePersistedTabs } from "../../util";
 import { LoadingAnimation } from "../LoadingPage";
 import StatsPage from "./StatsPage";
 import ContentPage from "./ContentPage";
+import EmojisPage from "./EmojisPage";
 
 const Stats = () => {
   const [missingInfo, setMissingInfo] = useState(false);
@@ -76,6 +77,9 @@ const Stats = () => {
           {stats?.notable_content && (
             <Tab label={<Typography>Content</Typography>} value="content" />
           )}
+          {stats?.user_stats?.favourite_emojis && (
+            <Tab label={<Typography>Emojis</Typography>} value="emojis" />
+          )}
         </Tabs>
       </animated.div>
       {loading && (
@@ -100,6 +104,9 @@ const Stats = () => {
       )}
       {!loading && stats && !missingInfo && tab === "content" && (
         <ContentPage stats={stats} />
+      )}
+      {!loading && stats && !missingInfo && tab === "emojis" && (
+        <EmojisPage stats={stats} />
       )}
     </Stack>
   );

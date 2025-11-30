@@ -92,7 +92,7 @@ const StatsPage = ({ stats }: { stats: any }) => {
   return (
     <>
       <animated.div style={statStyle[0]}>
-        <Box display="flex" alignItems="center" justifyContent="center" mt={2}>
+        <Box display="flex" alignItems="center" justifyContent="center" mt={3}>
           <Checkbox
             sx={{ color: "white", p: 0 }}
             value={showServerStats}
