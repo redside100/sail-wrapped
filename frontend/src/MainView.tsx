@@ -23,7 +23,7 @@ import {
   Message,
   PermMedia,
 } from "@mui/icons-material";
-import Stats from "./components/Stats";
+import Stats from "./components/stats/Stats";
 import TimeMachine from "./components/TimeMachine";
 import Secret from "./components/Secret";
 import YearSelector from "./components/YearSelector";
