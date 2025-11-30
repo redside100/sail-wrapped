@@ -56,7 +56,6 @@ const Secret = () => {
             }}
             onClick={() => {
               setPusheenMode((prev: boolean) => !prev);
-              localStorage.setItem("pusheen_mode", String(!pusheenMode));
             }}
           >
             Turn {pusheenMode ? "off" : "on"} Pusheen Mode

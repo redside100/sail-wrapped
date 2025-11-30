@@ -66,7 +66,7 @@ export const PARTICLE_OPTIONS = {
     },
   },
 };
-export const PUSHEEN_PARTICLE_OPTIONS = {
+export const CUSTOM_PARTICLE_OPTIONS_BASE = {
   particles: {
     number: {
       value: 250,
@@ -80,23 +80,7 @@ export const PUSHEEN_PARTICLE_OPTIONS = {
     shape: {
       type: "image",
       options: {
-        image: [
-          {
-            src: "/pusheen_cookie_particle.png",
-          },
-          {
-            src: "/pusheen.png",
-          },
-          {
-            src: "/pusheen_donut.png",
-          },
-          {
-            src: "/pusheen_pizza.png",
-          },
-          {
-            src: "/pusheen_burger.png",
-          },
-        ],
+        image: [],
       },
     },
     rotate: {
@@ -134,6 +118,34 @@ export const PUSHEEN_PARTICLE_OPTIONS = {
       },
       opacityRate: 8,
       velocityRate: 8,
+    },
+  },
+};
+export const PUSHEEN_PARTICLE_OPTIONS = {
+  ...CUSTOM_PARTICLE_OPTIONS_BASE,
+  particles: {
+    ...CUSTOM_PARTICLE_OPTIONS_BASE.particles,
+    shape: {
+      ...CUSTOM_PARTICLE_OPTIONS_BASE.particles.shape,
+      options: {
+        image: [
+          {
+            src: "/pusheen_cookie_particle.png",
+          },
+          {
+            src: "/pusheen.png",
+          },
+          {
+            src: "/pusheen_donut.png",
+          },
+          {
+            src: "/pusheen_pizza.png",
+          },
+          {
+            src: "/pusheen_burger.png",
+          },
+        ],
+      },
     },
   },
 };

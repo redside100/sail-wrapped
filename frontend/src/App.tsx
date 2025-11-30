@@ -1,4 +1,4 @@
-import { createContext, useEffect, useState } from "react";
+import { createContext, useCallback, useEffect, useState } from "react";
 import MainView from "./MainView";
 import { Box, createTheme, ThemeProvider } from "@mui/material";
 import toast, { Toaster } from "react-hot-toast";
@@ -25,15 +25,35 @@ export const UserContext = createContext<any>({
   setPusheenMode: () => {},
   year: CURRENT_YEAR,
   setYear: () => {},
+  customParticles: undefined,
+  setCustomParticles: () => {},
 });
 
 function App() {
   const [user, setUser] = useState<any>({});
   const [pusheenMode, setPusheenMode] = useState(false);
   const [year, setYear] = useState(CURRENT_YEAR);
+  const [customParticles, setCustomParticles] = useState(undefined);
+
+  const setAndPersistPusheenMode = useCallback((pusheenMode: boolean) => {
+    setPusheenMode(pusheenMode);
+    localStorage.setItem("pusheen_mode", String(pusheenMode));
+  }, []);
+
+  const setAndPersistCustomParticles = useCallback((config: any) => {
+    setCustomParticles(config);
+    localStorage.setItem("customParticles", JSON.stringify(config));
+  }, []);
 
   useEffect(() => {
     setPusheenMode(localStorage.getItem("pusheen_mode") === "true");
+    const customParticles = localStorage.getItem("customParticles");
+    if (customParticles) {
+      try {
+        const config = JSON.parse(customParticles);
+        setCustomParticles(config);
+      } catch (e) {}
+    }
     setYear(
       localStorage.getItem("year")
         ? Number(localStorage.getItem("year"))
@@ -166,7 +186,16 @@ function App() {
 
   return (
     <UserContext.Provider
-      value={{ user, setUser, pusheenMode, setPusheenMode, year, setYear }}
+      value={{
+        user,
+        setUser,
+        pusheenMode,
+        setPusheenMode: setAndPersistPusheenMode,
+        year,
+        setYear,
+        customParticles,
+        setCustomParticles: setAndPersistCustomParticles,
+      }}
     >
       <ThemeProvider theme={theme}>
         <Toaster
@@ -179,7 +208,13 @@ function App() {
         {initParticles && (
           <Particles
             id="particles"
-            options={pusheenMode ? PUSHEEN_PARTICLE_OPTIONS : PARTICLE_OPTIONS}
+            options={
+              customParticles
+                ? customParticles
+                : pusheenMode
+                ? PUSHEEN_PARTICLE_OPTIONS
+                : PARTICLE_OPTIONS
+            }
           />
         )}
         <Box zIndex={1} position="relative">
