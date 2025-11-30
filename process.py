@@ -10,12 +10,15 @@ json_files = os.listdir("export")
 file_count = len(json_files)
 conn = sqlite3.connect("backend/wrapped.db")
 
-DOWNLOAD_ATTACHMENTS = bool(os.environ.get("DOWNLOAD_ATTACHMENTS"))
 CURRENT_YEAR = int(os.environ.get("CURRENT_YEAR", "2025"))
 
 print("Current year:", CURRENT_YEAR)
 
 seen_emojis = set()
+
+export_directories = {"attachments", "emojis", "avatars"}
+for directory in export_directories:
+    os.makedirs(directory, exist_ok=True)
 
 for i, file_name in enumerate(json_files):
     print(f"Processing file {i + 1}/{file_count} - {file_name}")
@@ -99,45 +102,50 @@ for i, file_name in enumerate(json_files):
                 + f"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 t,
             )
-            if DOWNLOAD_ATTACHMENTS:
-                # emojis
-                all_emojis = message["inlineEmojis"] + [
-                    r["emoji"] for r in message["reactions"]
-                ]
-                for emoji in all_emojis:
-                    is_native_emoji = emoji["id"] == ""
-                    emoji_id = emoji["id"] or emoji["name"]
-                    if is_native_emoji or emoji_id in seen_emojis:
-                        continue
-                    seen_emojis.add(emoji_id)
-                    filename = emoji["imageUrl"].rsplit("/", 1)[-1]
-                    print(f"Writing emoji {emoji_id} {filename}")
-                    with open(f"emojis/{filename}", "wb+") as emoji_file:
-                        res = requests.get(emoji["imageUrl"])
-                        emoji_file.write(res.content)
+
+            # emojis
+            all_emojis = message["inlineEmojis"] + [
+                r["emoji"] for r in message["reactions"]
+            ]
+            for emoji in all_emojis:
+                is_native_emoji = emoji["id"] == ""
+                emoji_id = emoji["id"] or emoji["name"]
+                if is_native_emoji or emoji_id in seen_emojis:
+                    continue
+                seen_emojis.add(emoji_id)
+                filename = emoji["imageUrl"].rsplit("/", 1)[-1]
+                print(f"Writing emoji {emoji_id} {filename}")
+                with open(f"emojis/{filename}", "wb+") as emoji_file:
+                    res = requests.get(emoji["imageUrl"])
+                    emoji_file.write(res.content)
 
             # attachments
             for attachment in message["attachments"]:
-                if DOWNLOAD_ATTACHMENTS:
+                try:
                     print(
-                        f"Writing attachment {attachment['id']} {attachment['fileName']}"
+                        f"Writing attachment {attachment['id']} {attachment['fileName']} {attachment["url"]}"
                     )
                     with open(
                         f"attachments/{attachment['id']}_{attachment['fileName']}",
                         "wb+",
                     ) as attachment_file:
-                        res = requests.get(attachment["url"])
+                        res = requests.get(attachment["url"], timeout=5)
+                        res.raise_for_status()
                         attachment_file.write(res.content)
-                conn.cursor().execute(
-                    f"INSERT OR REPLACE INTO attachments (id, related_message_id, file_name, timestamp, extension, year) VALUES (?, ?, ?, ?, ?, ?)",
-                    (
-                        int(attachment["id"]),
-                        message_id,
-                        attachment["fileName"],
-                        formatted_timestamp,
-                        pathlib.Path(attachment["fileName"]).suffix,
-                        CURRENT_YEAR,
-                    ),
-                )
+
+                    conn.cursor().execute(
+                        f"INSERT OR REPLACE INTO attachments (id, related_message_id, file_name, timestamp, extension, year) VALUES (?, ?, ?, ?, ?, ?)",
+                        (
+                            int(attachment["id"]),
+                            message_id,
+                            attachment["fileName"],
+                            formatted_timestamp,
+                            pathlib.Path(attachment["fileName"]).suffix,
+                            CURRENT_YEAR,
+                        ),
+                    )
+                except Exception as e:
+                    print(f"Error getting attachment: {str(e)}")
+
         conn.commit()
         print("Done")

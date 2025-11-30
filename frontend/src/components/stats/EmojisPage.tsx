@@ -74,6 +74,7 @@ const EmojisPage = ({ stats }: { stats: any }) => {
                   width={48}
                   display="flex"
                   alignItems="center"
+                  justifyContent="center"
                   sx={{
                     cursor: "pointer",
                     "&:hover": {

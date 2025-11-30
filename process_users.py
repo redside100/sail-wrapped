@@ -7,7 +7,6 @@ import requests
 
 conn = sqlite3.connect("backend/wrapped.db")
 CURRENT_YEAR = int(os.environ.get("CURRENT_YEAR", "2025"))
-DOWNLOAD_AVATARS = bool(os.environ.get("DOWNLOAD_AVATARS"))
 
 print("Current year:", CURRENT_YEAR)
 
@@ -24,6 +23,8 @@ user_cache = {}
 
 print(f"Loaded all messages ({count})")
 print("Loading to memory")
+
+conn.cursor().execute(f"DELETE FROM users WHERE year = {CURRENT_YEAR}")
 
 
 def init_user_if_not_exists(user_id, user_name, user_nickname, avatar_url):
@@ -246,7 +247,7 @@ for user_id in user_cache:
         ),
     )
 
-    if DOWNLOAD_AVATARS and user_avatar_url:
+    if user_avatar_url:
         with open(
             f"avatars/{user_name}.png",
             "wb+",
