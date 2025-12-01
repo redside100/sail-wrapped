@@ -459,7 +459,7 @@ WHERE year = ?;
 
 @AsyncTTL(time_to_live=86400, maxsize=None)
 async def get_notable_content(
-    year: int, discord_id: int, n: int = 10
+    year: int, discord_id: int, n: int = 20
 ) -> List[NotableAttachmentSummary | NotableMessageSummary]:
     query = """
 SELECT messages.message_id, messages.content, messages.channel_name, messages.author_name, messages.total_reactions, attachments.id, attachments.file_name 

@@ -373,7 +373,7 @@ const StatsPage = ({ stats }: { stats: any }) => {
                 renderIcon={() => <Favorite sx={{ color: "white" }} />}
                 title="Most Mentioned"
                 content={
-                  showServerStats
+                  showServerStats || !stats.user_stats.most_mentioned_given_name
                     ? "--"
                     : () => (
                         <Typography variant="h4">
@@ -399,9 +399,7 @@ const StatsPage = ({ stats }: { stats: any }) => {
                                 borderRadius={10}
                               />
                               <Link color={COLORS.LINK}>
-                                @
-                                {stats.user_stats.most_mentioned_given_name ||
-                                  "???"}
+                                @{stats.user_stats.most_mentioned_given_name}
                               </Link>
                             </Box>
                           </Tooltip>
@@ -422,7 +420,8 @@ const StatsPage = ({ stats }: { stats: any }) => {
                 renderIcon={() => <Favorite sx={{ color: "white" }} />}
                 title="Most Mentioned By"
                 content={
-                  showServerStats
+                  showServerStats ||
+                  !stats.user_stats.most_mentioned_received_name
                     ? "--"
                     : () => (
                         <Typography variant="h4">
@@ -448,9 +447,7 @@ const StatsPage = ({ stats }: { stats: any }) => {
                                 borderRadius={10}
                               />
                               <Link color={COLORS.LINK}>
-                                @
-                                {stats.user_stats
-                                  .most_mentioned_received_name || "???"}
+                                @{stats.user_stats.most_mentioned_received_name}
                               </Link>
                             </Box>
                           </Tooltip>
