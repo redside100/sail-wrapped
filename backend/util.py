@@ -1,11 +1,14 @@
 import os
+from typing import Dict, List
 import aiohttp
 from fastapi import HTTPException
+from models import MessageInlineEmoji
 from consts import (
     AVATAR_URL_BASE,
     CLIENT_ID,
     CLIENT_SECRET,
     DISCORD_API_ENDPOINT,
+    EMOJI_URL_BASE,
     REDIRECT_URI,
 )
 
@@ -107,3 +110,23 @@ def get_avatar_url(year: int, username: str) -> str:
 def get_default_discord_avatar_url(username: str) -> str:
     default_avatar_num = int.from_bytes(username.encode()) % 5
     return f"https://cdn.discordapp.com/embed/avatars/{default_avatar_num}.png"
+
+
+def process_inline_emojis(
+    year: int, inline_emojis: List
+) -> Dict[str, MessageInlineEmoji]:
+    emojis = {}
+    for emoji in inline_emojis:
+        emoji_id = emoji["id"]
+        # native emoji, skip
+        if emoji_id == "":
+            continue
+
+        animated = emoji["isAnimated"]
+        url = EMOJI_URL_BASE.format(year, emoji_id) + (".gif" if animated else ".png")
+        code = f":{emoji['code']}:"
+        emojis[emoji_id] = MessageInlineEmoji(
+            emoji_id=emoji_id, url=url, code=code, animated=animated
+        )
+
+    return emojis

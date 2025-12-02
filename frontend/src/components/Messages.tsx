@@ -18,7 +18,12 @@ import {
   sendUnlike,
 } from "../api";
 import toast from "react-hot-toast";
-import { Favorite, FavoriteBorder, Message } from "@mui/icons-material";
+import {
+  EmojiObjects,
+  Favorite,
+  FavoriteBorder,
+  Message,
+} from "@mui/icons-material";
 import { useParams, useSearchParams } from "react-router-dom";
 import LinkIcon from "@mui/icons-material/Link";
 import ReactMarkdown from "react-markdown";
@@ -43,7 +48,16 @@ export const MessageContainer = ({
     if (!messageInfo) {
       return "";
     }
-    return getTruncatedString(messageInfo.content, maxLength);
+    let content = getTruncatedString(messageInfo.content, maxLength);
+    const emojis = Object.values(messageInfo.emojis);
+    emojis.forEach((emoji: any) => {
+      // @ts-ignore - replaceAll
+      content = content.replaceAll(
+        emoji.code,
+        `![${emoji.code}](${emoji.url})`
+      );
+    });
+    return content;
   }, [messageInfo?.content]);
 
   const [style] = useSpring(
@@ -82,6 +96,18 @@ export const MessageContainer = ({
                 >
                   {props.href}
                 </Link>
+              ),
+              img: (props: any) => (
+                <Box
+                  component="img"
+                  src={props.src}
+                  maxWidth={24}
+                  maxHeight={24}
+                  objectFit="contain"
+                  sx={{
+                    "vertical-align": "middle",
+                  }}
+                />
               ),
             }}
           >

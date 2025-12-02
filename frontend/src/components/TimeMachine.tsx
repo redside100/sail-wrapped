@@ -307,7 +307,7 @@ const TimeMachine = () => {
                               onClick={() =>
                                 window
                                   .open(
-                                    `${window.location.origin}/media/view/${message.message_id}`,
+                                    `${window.location.origin}/messages/view/${message.message_id}`,
                                     "_blank"
                                   )
                                   ?.focus()

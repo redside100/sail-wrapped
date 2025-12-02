@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
 
 
@@ -46,6 +46,12 @@ class NotableAttachmentSummary(AttachmentSummary):
     total_reactions: int
 
 
+class MessageInlineEmoji(BaseModel):
+    url: str
+    code: str
+    animated: bool
+
+
 class MessageInfo(BaseModel):
     message_id: str
     content: str
@@ -56,6 +62,7 @@ class MessageInfo(BaseModel):
     likes: int
     channel_id: str
     channel_name: str
+    emojis: Dict[str, MessageInlineEmoji]  # emoji_id -> details
 
 
 class MessageSummary(BaseModel):

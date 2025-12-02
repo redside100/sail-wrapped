@@ -3,7 +3,7 @@ import time
 from typing import Dict, List, Optional
 import aiosqlite
 import orjson
-from util import get_avatar_url
+from util import get_avatar_url, process_inline_emojis
 from consts import (
     ATTACHMENT_URL_BASE,
     EMOJI_URL_BASE,
@@ -91,7 +91,7 @@ async def get_random_message(
         else ""
     )
     query = f"""
-SELECT message_id, content, channel_name, author_id, author_name, timestamp, channel_id 
+SELECT message_id, content, channel_name, author_id, author_name, timestamp, channel_id, inline_emojis
 FROM messages 
 WHERE message_id 
 IN (SELECT message_id FROM messages WHERE content_length >= ? AND year = ? {where_clause}ORDER BY RANDOM() LIMIT 1)
@@ -107,6 +107,7 @@ IN (SELECT message_id FROM messages WHERE content_length >= ? AND year = ? {wher
 
     message_id = int(row[0])
     likes = await get_message_likes(message_id)
+    inline_emojis = process_inline_emojis(year, orjson.loads(row[7])) if row[7] else []
     return MessageInfo(
         message_id=str(message_id),
         content=row[1],
@@ -117,12 +118,13 @@ IN (SELECT message_id FROM messages WHERE content_length >= ? AND year = ? {wher
         timestamp=row[5],
         likes=likes,
         channel_id=str(row[6]),
+        emojis=inline_emojis,
     )
 
 
 async def get_message(year: int, message_id: int) -> MessageInfo:
     async with conn.execute(
-        "SELECT message_id, content, channel_name, author_id, author_name, timestamp, channel_id FROM messages WHERE message_id = ? AND year = ?",
+        "SELECT message_id, content, channel_name, author_id, author_name, timestamp, channel_id, inline_emojis FROM messages WHERE message_id = ? AND year = ?",
         (message_id, year),
     ) as cursor:
         row = await cursor.fetchone()
@@ -131,6 +133,8 @@ async def get_message(year: int, message_id: int) -> MessageInfo:
         return None
 
     likes = await get_message_likes(message_id)
+    inline_emojis = process_inline_emojis(year, orjson.loads(row[7])) if row[7] else []
+
     return MessageInfo(
         message_id=str(message_id),
         content=row[1],
@@ -141,6 +145,7 @@ async def get_message(year: int, message_id: int) -> MessageInfo:
         timestamp=row[5],
         likes=likes,
         channel_id=str(row[6]),
+        emojis=inline_emojis,
     )
 
 
@@ -544,25 +549,30 @@ async def get_time_machine_screenshot(date: datetime, year: int):
         ]
 
     async with conn.execute(
-        "SELECT message_id, content, channel_name, author_id, author_name, timestamp, channel_id FROM messages WHERE content_length > 0 AND timestamp >= ? AND timestamp <= ? AND year = ? ORDER BY RANDOM() LIMIT ?",
+        "SELECT message_id, content, channel_name, author_id, author_name, timestamp, channel_id, inline_emojis FROM messages WHERE content_length > 0 AND timestamp >= ? AND timestamp <= ? AND year = ? ORDER BY RANDOM() LIMIT ?",
         (start_time, end_time, year, MAX_MESSAGE_COUNT),
     ) as cursor:
         rows = await cursor.fetchall()
 
-        messages = [
-            MessageInfo(
-                message_id=str(row[0]),
-                content=row[1],
-                channel_name=row[2],
-                sender_id=str(row[3]),
-                sender_handle=row[4],
-                sender_avatar_url=get_avatar_url(year, row[4]),
-                timestamp=row[5],
-                likes=0,
-                channel_id=str(row[6]),
+        messages = []
+        for row in rows:
+            inline_emojis = (
+                process_inline_emojis(year, orjson.loads(row[7])) if row[7] else []
             )
-            for row in rows
-        ]
+            messages.append(
+                MessageInfo(
+                    message_id=str(row[0]),
+                    content=row[1],
+                    channel_name=row[2],
+                    sender_id=str(row[3]),
+                    sender_handle=row[4],
+                    sender_avatar_url=get_avatar_url(year, row[4]),
+                    timestamp=row[5],
+                    likes=0,
+                    channel_id=str(row[6]),
+                    emojis=inline_emojis,
+                )
+            )
 
     return TimeMachineScreenshot(attachments=attachments, messages=messages)
 
