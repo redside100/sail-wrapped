@@ -107,7 +107,7 @@ IN (SELECT message_id FROM messages WHERE content_length >= ? AND year = ? {wher
 
     message_id = int(row[0])
     likes = await get_message_likes(message_id)
-    inline_emojis = process_inline_emojis(year, orjson.loads(row[7])) if row[7] else []
+    inline_emojis = process_inline_emojis(year, orjson.loads(row[7])) if row[7] else {}
     return MessageInfo(
         message_id=str(message_id),
         content=row[1],
@@ -133,7 +133,7 @@ async def get_message(year: int, message_id: int) -> MessageInfo:
         return None
 
     likes = await get_message_likes(message_id)
-    inline_emojis = process_inline_emojis(year, orjson.loads(row[7])) if row[7] else []
+    inline_emojis = process_inline_emojis(year, orjson.loads(row[7])) if row[7] else {}
 
     return MessageInfo(
         message_id=str(message_id),
@@ -557,7 +557,7 @@ async def get_time_machine_screenshot(date: datetime, year: int):
         messages = []
         for row in rows:
             inline_emojis = (
-                process_inline_emojis(year, orjson.loads(row[7])) if row[7] else []
+                process_inline_emojis(year, orjson.loads(row[7])) if row[7] else {}
             )
             messages.append(
                 MessageInfo(

@@ -6,12 +6,7 @@ import { getInfo, login, refresh } from "./api";
 import moment from "moment";
 import Particles, { initParticlesEngine } from "@tsparticles/react";
 import { loadSlim } from "@tsparticles/slim";
-import {
-  COLORS,
-  CURRENT_YEAR,
-  PARTICLE_OPTIONS,
-  PUSHEEN_PARTICLE_OPTIONS,
-} from "./consts";
+import { COLORS, CURRENT_YEAR, PARTICLE_OPTIONS } from "./consts";
 import { loadImageShape } from "@tsparticles/shape-image";
 
 export const UserContext = createContext<any>({
@@ -21,8 +16,6 @@ export const UserContext = createContext<any>({
     info: {},
   },
   setUser: () => {},
-  pusheenMode: false,
-  setPusheenMode: () => {},
   year: CURRENT_YEAR,
   setYear: () => {},
   customParticles: undefined,
@@ -31,14 +24,8 @@ export const UserContext = createContext<any>({
 
 function App() {
   const [user, setUser] = useState<any>({});
-  const [pusheenMode, setPusheenMode] = useState(false);
   const [year, setYear] = useState(CURRENT_YEAR);
   const [customParticles, setCustomParticles] = useState(undefined);
-
-  const setAndPersistPusheenMode = useCallback((pusheenMode: boolean) => {
-    setPusheenMode(pusheenMode);
-    localStorage.setItem("pusheen_mode", String(pusheenMode));
-  }, []);
 
   const setAndPersistCustomParticles = useCallback((config: any) => {
     setCustomParticles(config);
@@ -46,7 +33,6 @@ function App() {
   }, []);
 
   useEffect(() => {
-    setPusheenMode(localStorage.getItem("pusheen_mode") === "true");
     const customParticles = localStorage.getItem("customParticles");
     if (customParticles) {
       try {
@@ -189,8 +175,6 @@ function App() {
       value={{
         user,
         setUser,
-        pusheenMode,
-        setPusheenMode: setAndPersistPusheenMode,
         year,
         setYear,
         customParticles,
@@ -208,13 +192,7 @@ function App() {
         {initParticles && (
           <Particles
             id="particles"
-            options={
-              customParticles
-                ? customParticles
-                : pusheenMode
-                ? PUSHEEN_PARTICLE_OPTIONS
-                : PARTICLE_OPTIONS
-            }
+            options={customParticles ? customParticles : PARTICLE_OPTIONS}
           />
         )}
         <Box zIndex={1} position="relative">

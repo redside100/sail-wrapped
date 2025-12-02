@@ -3,11 +3,12 @@ import { useContext, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { UserContext } from "../App";
 import { animated, useSprings } from "@react-spring/web";
+import { PUSHEEN_PARTICLE_OPTIONS } from "../consts";
 
 const Secret = () => {
   const navigate = useNavigate();
   const queryParams = new URLSearchParams(window.location.search);
-  const { user, pusheenMode, setPusheenMode } = useContext(UserContext);
+  const { user, customParticles, setCustomParticles } = useContext(UserContext);
   const isValid = useMemo(
     () => queryParams.get("user") === user.info?.id,
     [queryParams, user?.info?.id]
@@ -55,10 +56,16 @@ const Secret = () => {
               mt: 2,
             }}
             onClick={() => {
-              setPusheenMode((prev: boolean) => !prev);
+              if (customParticles === PUSHEEN_PARTICLE_OPTIONS) {
+                setCustomParticles(undefined);
+              } else {
+                setCustomParticles(PUSHEEN_PARTICLE_OPTIONS);
+              }
             }}
           >
-            Turn {pusheenMode ? "off" : "on"} Pusheen Mode
+            {customParticles === PUSHEEN_PARTICLE_OPTIONS
+              ? "Turn off pusheen mode"
+              : "Turn on pusheen mode"}
           </Button>
         </Stack>
       </animated.div>
