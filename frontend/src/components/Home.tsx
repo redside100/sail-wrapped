@@ -154,9 +154,9 @@ const Home = () => {
         >
           <animated.div style={buttonStyles[5]}>
             <HomeButton
-              to="/mention-graph"
-              title="Mention Graph"
-              description="Visualize most mentioned networks."
+              to="/charts"
+              title="Charts"
+              description="Chart visualizations for various things."
             />
           </animated.div>
         </Grid2>

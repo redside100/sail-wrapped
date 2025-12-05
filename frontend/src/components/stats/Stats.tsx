@@ -72,6 +72,9 @@ const Stats = () => {
             setTab(value);
           }}
           indicatorColor="secondary"
+          allowScrollButtonsMobile
+          scrollButtons={true}
+          variant="scrollable"
         >
           <Tab label={<Typography>Stats</Typography>} value="stats" />
           {stats?.notable_content && (

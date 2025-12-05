@@ -300,3 +300,34 @@ async def mention_graph(
 ):
     check_token(token_cache, token)
     return await async_db.get_mention_graph(year)
+
+
+@app.get("/charts")
+async def charts(
+    token: Annotated[str | None, Header()] = None,
+    year: int = CURRENT_YEAR,
+):
+    check_token(token_cache, token)
+    return await async_db.get_static_buckets(year)
+
+
+@app.get("/words/search")
+async def word_search(
+    word: str, token: Annotated[str | None, Header()] = None, year: int = CURRENT_YEAR
+):
+    check_token(token_cache, token)
+    if len(word) < 1 or len(word) > 50:
+        raise HTTPException(
+            status_code=400, detail="The word must be 1 to 50 characters."
+        )
+
+    if " " in word or "\t" in word or "\n" in word:
+        raise HTTPException(
+            status_code=400, detail="The word can't have spaces, tabs, or newlines."
+        )
+
+    word_data = await async_db.get_word_data(year, word.lower())
+    if not word_data or not word_data.buckets:
+        raise HTTPException(status_code=404, detail="No data for that word was found.")
+
+    return word_data

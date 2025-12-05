@@ -48,6 +48,7 @@ VIDEO_EXT_LIST = [
     ".f4b",
     ".mod",
 ]
+
 EXCLUDED_EXTENSIONS = [".yaml", ".zip"]
 ATTACHMENT_URL_BASE = (
     "https://redside.tor1.digitaloceanspaces.com/sw/{}/attachments/{}_{}"

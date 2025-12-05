@@ -62,6 +62,16 @@ CREATE TABLE IF NOT EXISTS "users" (
 	"emoji_data" BLOB,
 	"year" INTEGER,
 );
+CREATE TABLE IF NOT EXISTS "static" ("key" TEXT, "value" BLOB, "year" INTEGER)
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_key_year" ON "static" (
+	"key",
+	"year"
+);
+CREATE TABLE IF NOT EXISTS "word_usage" ("word" TEXT, "data" BLOB, "year" INTEGER)
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_word_year" ON "word_usage" (
+	"word",
+	"year"
+);
 CREATE UNIQUE INDEX IF NOT EXISTS "idx_attachment_id_discord_id" ON "likes" (
 	"attachment_id",
 	"discord_id"

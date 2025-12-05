@@ -22,12 +22,14 @@ import {
   Logout,
   Message,
   PermMedia,
+  TrendingUp,
 } from "@mui/icons-material";
 import Stats from "./components/stats/Stats";
 import TimeMachine from "./components/TimeMachine";
 import Secret from "./components/Secret";
 import YearSelector from "./components/YearSelector";
 import MentionGraph from "./components/MentionGraph";
+import Charts from "./components/Charts";
 
 const DynamicMenuItem = ({
   to,
@@ -155,9 +157,9 @@ const MainView = () => {
                 IconComponent={AccessTime}
               />
               <DynamicMenuItem
-                to="/mention-graph"
-                text="Mention Graph"
-                IconComponent={Hub}
+                to="/charts"
+                text="Charts"
+                IconComponent={TrendingUp}
               />
               <DynamicMenuItem
                 to="/stats"
@@ -236,7 +238,7 @@ const MainView = () => {
         <Route path="/likes" element={<Likes />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/time-machine" element={<TimeMachine />} />
-        <Route path="/mention-graph" element={<MentionGraph />} />
+        <Route path="/charts" element={<Charts />} />
         <Route path="/stats" element={<Stats />} />
         <Route
           path="/super-duper-secret-page-for-cool-people"

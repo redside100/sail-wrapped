@@ -206,3 +206,32 @@ export const getMentionGraphData = async (token: string, year: number) => {
   });
   return [await res.json(), res.status];
 };
+
+export const getChartData = async (token: string, year: number) => {
+  const res = await fetch(`${API_BASE}/charts?year=${year}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      token,
+    },
+  });
+  return [await res.json(), res.status];
+};
+
+export const getWordData = async (
+  word: string,
+  token: string,
+  year: number
+) => {
+  const res = await fetch(
+    `${API_BASE}/words/search?word=${word}&year=${year}`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        token,
+      },
+    }
+  );
+  return [await res.json(), res.status];
+};

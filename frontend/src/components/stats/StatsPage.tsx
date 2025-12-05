@@ -36,10 +36,12 @@ const StatEntry = ({
   renderIcon,
   title,
   content,
+  tooltip,
 }: {
   renderIcon: () => ReactNode;
   title: string;
   content: string | number | (() => ReactNode);
+  tooltip?: string;
 }) => {
   const isFn = typeof content === "function";
   return (
@@ -59,9 +61,17 @@ const StatEntry = ({
       <Stack gap={1} alignItems="center">
         <Box display="flex" gap={1} alignItems="center" justifyContent="center">
           {renderIcon()}
-          <Typography variant="h5" noWrap>
-            {title}
-          </Typography>
+          {tooltip ? (
+            <Tooltip title={<Typography>{tooltip}</Typography>} placement="top">
+              <Typography variant="h5" noWrap>
+                {title}
+              </Typography>
+            </Tooltip>
+          ) : (
+            <Typography variant="h5" noWrap>
+              {title}
+            </Typography>
+          )}
         </Box>
         {isFn ? (
           content()
@@ -311,6 +321,7 @@ const StatsPage = ({ stats }: { stats: any }) => {
               <StatEntry
                 renderIcon={() => <AlternateEmail sx={{ color: "white" }} />}
                 title="Mentions Received"
+                tooltip="Includes message replies"
                 content={
                   showServerStats
                     ? stats.global_stats.total_mentions
@@ -330,6 +341,7 @@ const StatsPage = ({ stats }: { stats: any }) => {
               <StatEntry
                 renderIcon={() => <AlternateEmail sx={{ color: "white" }} />}
                 title="Mentions Given"
+                tooltip="Includes message replies"
                 content={
                   showServerStats
                     ? stats.global_stats.total_mentions

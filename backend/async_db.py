@@ -20,9 +20,12 @@ from models import (
     MessageSummary,
     NotableAttachmentSummary,
     NotableMessageSummary,
+    StaticBuckets,
     TimeMachineScreenshot,
+    TimestampBucket,
     UserEmojiEntry,
     UserStats,
+    WordData,
 )
 from cache import AsyncTTL
 
@@ -597,3 +600,60 @@ async def get_mention_graph(year: int):
             edges.append(edge)
 
     return MentionGraphResponse(edges=edges)
+
+
+@AsyncTTL(time_to_live=3600, maxsize=None)
+async def get_word_data(year: int, word: str) -> Optional[WordData]:
+    async with conn.execute(
+        "SELECT data FROM word_usage WHERE word = ? AND year = ?", (word, year)
+    ) as cursor:
+        row = await cursor.fetchone()
+        if not row:
+            return None
+        word_data = orjson.loads(row[0])
+        total_count = word_data["total"]
+        buckets = [
+            TimestampBucket(timestamp=int(bucket), count=word_data["buckets"][bucket])
+            for bucket in word_data["buckets"]
+        ]
+
+    return WordData(total_count=total_count, buckets=buckets)
+
+
+@AsyncTTL(time_to_live=86400, maxsize=None)
+async def get_static_buckets(year: int) -> StaticBuckets:
+    async with conn.execute(
+        "SELECT key, value FROM static WHERE year = ?", (year,)
+    ) as cursor:
+        message_buckets, reaction_buckets, mention_buckets = [], [], []
+        rows = await cursor.fetchall()
+        if not rows:
+            return StaticBuckets(
+                message_buckets=message_buckets,
+                reaction_buckets=reaction_buckets,
+                mention_buckets=mention_buckets,
+            )
+
+        bucket_keys = {"message_buckets", "reaction_buckets", "mention_buckets"}
+        for row in rows:
+            key, value = row
+            if key not in bucket_keys:
+                continue
+
+            data = orjson.loads(value)
+            buckets = [
+                TimestampBucket(timestamp=int(bucket), count=data[bucket])
+                for bucket in data
+            ]
+            if key == "message_buckets":
+                message_buckets = buckets
+            elif key == "reaction_buckets":
+                reaction_buckets = buckets
+            elif key == "mention_buckets":
+                mention_buckets = buckets
+
+        return StaticBuckets(
+            message_buckets=message_buckets,
+            reaction_buckets=reaction_buckets,
+            mention_buckets=mention_buckets,
+        )

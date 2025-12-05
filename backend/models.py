@@ -160,3 +160,19 @@ class MentionGraphEdge(BaseModel):
 
 class MentionGraphResponse(BaseModel):
     edges: List[MentionGraphEdge]
+
+
+class TimestampBucket(BaseModel):
+    timestamp: int
+    count: int
+
+
+class StaticBuckets(BaseModel):
+    message_buckets: List[TimestampBucket]
+    reaction_buckets: List[TimestampBucket]
+    mention_buckets: List[TimestampBucket]
+
+
+class WordData(BaseModel):
+    total_count: int
+    buckets: List[TimestampBucket]
