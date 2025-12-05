@@ -109,12 +109,12 @@ const Charts = () => {
               variant="scrollable"
             >
               <Tab label={<Typography>Messages</Typography>} value="messages" />
-              <Tab label={<Typography>Words</Typography>} value="words" />
               <Tab
                 label={<Typography>Reactions</Typography>}
                 value="reactions"
               />
               <Tab label={<Typography>Mentions</Typography>} value="mentions" />
+              <Tab label={<Typography>Words</Typography>} value="words" />
               <Tab
                 label={<Typography>Mention Networks</Typography>}
                 value="mention-networks"
@@ -128,6 +128,26 @@ const Charts = () => {
                 color={COLORS.LINK}
                 curve="monotoneX"
                 counter="message"
+              />
+            )}
+            {tab === "reactions" && (
+              <GenericChart
+                title="Reactions sent over time"
+                bucket_data={chartData?.reaction_buckets ?? []}
+                yLabel="Reactions"
+                color={COLORS.LINK}
+                curve="monotoneX"
+                counter="reaction"
+              />
+            )}
+            {tab === "mentions" && (
+              <GenericChart
+                title="Mentions over time"
+                bucket_data={chartData?.mention_buckets ?? []}
+                yLabel="Mentions"
+                color={COLORS.LINK}
+                curve="monotoneX"
+                counter="mention"
               />
             )}
             {tab === "words" && (
@@ -196,26 +216,6 @@ const Charts = () => {
                   />
                 )}
               </Stack>
-            )}
-            {tab === "reactions" && (
-              <GenericChart
-                title="Reactions sent over time"
-                bucket_data={chartData?.reaction_buckets ?? []}
-                yLabel="Reactions"
-                color={COLORS.LINK}
-                curve="monotoneX"
-                counter="reaction"
-              />
-            )}
-            {tab === "mentions" && (
-              <GenericChart
-                title="Mentions over time"
-                bucket_data={chartData?.mention_buckets ?? []}
-                yLabel="Mentions"
-                color={COLORS.LINK}
-                curve="monotoneX"
-                counter="mention"
-              />
             )}
             {tab === "mention-networks" && <MentionGraph />}
           </Stack>

@@ -87,6 +87,7 @@ const EmojisPage = ({ stats }: { stats: any }) => {
           gap={3}
           width="80vw"
           alignItems="center"
+          justifyContent="center"
         >
           {truncatedEmojis.map((emoji: any, idx: number) => {
             return (
