@@ -1,14 +1,7 @@
 import { useContext, useEffect, useMemo, useState } from "react";
 import { getMentionGraphData } from "../api";
 import toast from "react-hot-toast";
-import {
-  Box,
-  MenuItem,
-  Select,
-  Stack,
-  Tooltip,
-  Typography,
-} from "@mui/material";
+import { Box, MenuItem, Select, Stack, Typography } from "@mui/material";
 import { LoadingAnimation } from "./LoadingPage";
 import { UserContext } from "../App";
 import { CameraMode, GraphCanvas, lightTheme } from "reagraph";

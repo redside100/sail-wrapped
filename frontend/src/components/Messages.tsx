@@ -18,12 +18,7 @@ import {
   sendUnlike,
 } from "../api";
 import toast from "react-hot-toast";
-import {
-  EmojiObjects,
-  Favorite,
-  FavoriteBorder,
-  Message,
-} from "@mui/icons-material";
+import { Favorite, FavoriteBorder, Message } from "@mui/icons-material";
 import { useParams, useSearchParams } from "react-router-dom";
 import LinkIcon from "@mui/icons-material/Link";
 import ReactMarkdown from "react-markdown";

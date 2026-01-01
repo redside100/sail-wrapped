@@ -16,7 +16,6 @@ import {
   AccessTime,
   Favorite,
   Home as HomeIcon,
-  Hub,
   Insights,
   Leaderboard as LeaderboardIcon,
   Logout,
@@ -28,7 +27,6 @@ import Stats from "./components/stats/Stats";
 import TimeMachine from "./components/TimeMachine";
 import Secret from "./components/Secret";
 import YearSelector from "./components/YearSelector";
-import MentionGraph from "./components/MentionGraph";
 import Charts from "./components/Charts";
 
 const DynamicMenuItem = ({
