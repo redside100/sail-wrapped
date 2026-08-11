@@ -46,7 +46,7 @@ export const getInfo = async (token: string) => {
 export const getRandomAttachment = async (
   token: string,
   videoOnly: boolean,
-  year: number
+  year: number,
 ) => {
   const res = await fetch(
     `${API_BASE}/attachment/random?year=${year}&video_only=${videoOnly}`,
@@ -56,7 +56,7 @@ export const getRandomAttachment = async (
         "Content-Type": "application/json",
         token,
       },
-    }
+    },
   );
   return [await res.json(), res.status];
 };
@@ -64,7 +64,7 @@ export const getRandomAttachment = async (
 export const getAttachment = async (
   token: string,
   attachmentId: string,
-  year: number
+  year: number,
 ) => {
   const res = await fetch(
     `${API_BASE}/attachment/view/${attachmentId}?year=${year}`,
@@ -74,7 +74,7 @@ export const getAttachment = async (
         "Content-Type": "application/json",
         token,
       },
-    }
+    },
   );
   return [await res.json(), res.status];
 };
@@ -83,7 +83,7 @@ export const getRandomMessage = async (
   token: string,
   linksOnly: boolean,
   minLength: number,
-  year: number
+  year: number,
 ) => {
   const res = await fetch(
     `${API_BASE}/message/random?year=${year}&min_length=${minLength}&links_only=${linksOnly}`,
@@ -93,7 +93,7 @@ export const getRandomMessage = async (
         "Content-Type": "application/json",
         token,
       },
-    }
+    },
   );
   return [await res.json(), res.status];
 };
@@ -101,7 +101,7 @@ export const getRandomMessage = async (
 export const getMessage = async (
   token: string,
   messageId: string,
-  year: number
+  year: number,
 ) => {
   const res = await fetch(
     `${API_BASE}/message/view/${messageId}?year=${year}`,
@@ -111,7 +111,7 @@ export const getMessage = async (
         "Content-Type": "application/json",
         token,
       },
-    }
+    },
   );
   return [await res.json(), res.status];
 };
@@ -130,7 +130,7 @@ export const getLikes = async (token: string, year: number) => {
 export const sendLike = async (
   token: string,
   id: string,
-  isAttachment: boolean
+  isAttachment: boolean,
 ) => {
   const res = await fetch(`${API_BASE}/like`, {
     method: "POST",
@@ -146,7 +146,7 @@ export const sendLike = async (
 export const sendUnlike = async (
   token: string,
   id: string,
-  isAttachment: boolean
+  isAttachment: boolean,
 ) => {
   const res = await fetch(`${API_BASE}/unlike`, {
     method: "POST",
@@ -184,7 +184,7 @@ export const getStats = async (token: string, year: number) => {
 export const getTimeMachineSnapshot = async (
   token: string,
   date: string,
-  year: number
+  year: number,
 ) => {
   const res = await fetch(`${API_BASE}/time_machine/${date}?year=${year}`, {
     method: "GET",
@@ -221,7 +221,7 @@ export const getChartData = async (token: string, year: number) => {
 export const getWordData = async (
   word: string,
   token: string,
-  year: number
+  year: number,
 ) => {
   const res = await fetch(
     `${API_BASE}/words/search?word=${word}&year=${year}`,
@@ -231,7 +231,18 @@ export const getWordData = async (
         "Content-Type": "application/json",
         token,
       },
-    }
+    },
   );
+  return [await res.json(), res.status];
+};
+
+export const getDriveObjects = async (prefix: string, token: string) => {
+  const res = await fetch(`${API_BASE}/drive/list?prefix=${prefix}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      token,
+    },
+  });
   return [await res.json(), res.status];
 };

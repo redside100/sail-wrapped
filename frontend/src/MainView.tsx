@@ -6,7 +6,7 @@ import LandingPage from "./components/LandingPage";
 import LoadingPage from "./components/LoadingPage";
 import { COLORS, DISCORD_CDN_BASE } from "./consts";
 import "./App.css";
-import { Link, Navigate, Route, Routes } from "react-router-dom";
+import { Link, Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import Home from "./components/Home";
 import Media from "./components/Media";
 import Messages from "./components/Messages";
@@ -22,12 +22,14 @@ import {
   Message,
   PermMedia,
   TrendingUp,
+  FolderCopy,
 } from "@mui/icons-material";
 import Stats from "./components/stats/Stats";
 import TimeMachine from "./components/TimeMachine";
 import Secret from "./components/Secret";
 import YearSelector from "./components/YearSelector";
 import Charts from "./components/Charts";
+import Archives from "./components/Archives";
 
 const DynamicMenuItem = ({
   to,
@@ -65,6 +67,7 @@ const DynamicMenuItem = ({
 
 const MainView = () => {
   const { user, setUser } = useContext(UserContext);
+  const navigate = useNavigate();
   const doLogout = async () => {
     const token = localStorage.getItem("access_token") ?? "";
     localStorage.clear();
@@ -88,6 +91,12 @@ const MainView = () => {
   if (!user.loggedIn) {
     return <LandingPage />;
   }
+
+  if (localStorage.getItem("redirect_to")) {
+    navigate(localStorage.getItem("redirect_to") ?? "");
+    localStorage.removeItem("redirect_to");
+  }
+
   return (
     <>
       <AppBar position="sticky">
@@ -164,6 +173,11 @@ const MainView = () => {
                 text="Stats"
                 IconComponent={Insights}
               />
+              <DynamicMenuItem
+                to="/archives"
+                text="Archives"
+                IconComponent={FolderCopy}
+              />
             </Box>
             <Box alignItems="center" display="flex" gap={2}>
               <Box
@@ -238,6 +252,7 @@ const MainView = () => {
         <Route path="/time-machine" element={<TimeMachine />} />
         <Route path="/charts" element={<Charts />} />
         <Route path="/stats" element={<Stats />} />
+        <Route path="/archives" element={<Archives />} />
         <Route
           path="/super-duper-secret-page-for-cool-people"
           element={<Secret />}

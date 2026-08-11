@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Dict, List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class UserInfo(BaseModel):
@@ -176,3 +176,20 @@ class StaticBuckets(BaseModel):
 class WordData(BaseModel):
     total_count: int
     buckets: List[TimestampBucket]
+
+class DriveObject(BaseModel):
+    key: str
+    created: Optional[datetime] = None
+    author: Optional[UserInfo] = None
+    is_directory: bool = False
+
+class DriveMetadata(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    author_id: str = Field(default="0")
+    author_username: str = Field(default="Unknown")
+    author_global_name: str = Field(default="Unknown")
+    author_avatar: Optional[str] = "https://cdn.discordapp.com/embed/avatars/0.png"
+
+    def to_user_info(self):
+        return UserInfo(id=self.author_id, username=self.author_username, global_name=self.author_global_name, avatar=self.author_avatar)

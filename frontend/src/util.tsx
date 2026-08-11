@@ -2,11 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 export const usePagination = (
   listData: any[],
-  entitiesPerPage: number
+  entitiesPerPage: number,
 ): [any[], number, number, (_: number) => void] => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [currentPage, setCurrentPage] = useState<number>(
-    Number(searchParams.get("page")) ?? 1
+    Number(searchParams.get("page")) ?? 1,
   );
 
   const setAndPersistPage = useCallback((newPage: number) => {
@@ -19,7 +19,7 @@ export const usePagination = (
   }, []);
   const totalPages = useMemo(
     () => Math.ceil(listData?.length / entitiesPerPage),
-    [listData.length, entitiesPerPage]
+    [listData.length, entitiesPerPage],
   );
 
   const pageEntities = useMemo(() => {
@@ -50,7 +50,7 @@ export const usePagination = (
 };
 
 export const usePersistedTabs = (
-  defaultTab: string
+  defaultTab: string,
 ): [string, (_: string) => void] => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState<string>(searchParams.get("tab") ?? defaultTab);
@@ -76,9 +76,50 @@ export const usePersistedTabs = (
   return [tab, setAndPersistTab];
 };
 
+export const usePersistedSearchParam = (
+  key: string,
+  defaultValue: string,
+): [string, (_: string) => void] => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [value, setValue] = useState<string>(
+    searchParams.get(key) ?? defaultValue,
+  );
+  const setAndPersistValue = useCallback((newValue: string) => {
+    setValue(newValue);
+    setSearchParams((prev) => {
+      const newParams = prev;
+      newParams.set(key, newValue);
+      return newParams;
+    });
+  }, []);
+
+  useEffect(() => {
+    const paramsValue = searchParams.get(key);
+    if (!paramsValue) {
+      setValue(defaultValue);
+    }
+    if (paramsValue && value !== paramsValue) {
+      setValue(paramsValue);
+    }
+  }, [searchParams]);
+
+  return [value, setAndPersistValue];
+};
+
 export const getTruncatedString = (str: string, maxLength: number) => {
   if (str.length > maxLength) {
     return `${str.slice(0, maxLength)}...`;
   }
   return str;
+};
+
+export const getObjectName = (key: string) => {
+  const segments = key.split("/");
+  if (segments.length === 0) {
+    return key;
+  }
+  if (key.endsWith("/") && segments.length > 1) {
+    return segments[segments.length - 2];
+  }
+  return segments[segments.length - 1];
 };

@@ -95,7 +95,13 @@ const LandingPage = () => {
           <animated.div style={loginStyle}>
             <Button
               variant="contained"
-              onClick={() => (window.location.href = AUTH_URL)}
+              onClick={() => {
+                localStorage.setItem(
+                  "redirect_to",
+                  window.location.pathname + window.location.search,
+                );
+                window.location.href = AUTH_URL;
+              }}
             >
               Login with Discord
             </Button>

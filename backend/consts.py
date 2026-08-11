@@ -1,3 +1,4 @@
+import json
 import os
 
 DISCORD_API_ENDPOINT = "https://discord.com/api/v10"
@@ -61,3 +62,8 @@ ATTACHMENT_EXCLUDE_REPEAT_COUNT = 25
 
 with open("client_secret", "r") as f:
     CLIENT_SECRET = f.read()
+
+with open("s3_credentials.json", "r") as f:
+    data = json.load(f)
+    S3_ACCESS_KEY = data["access_key"]
+    S3_SECRET = data["secret"]

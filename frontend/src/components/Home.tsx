@@ -17,7 +17,7 @@ const Home = () => {
     },
     delay: 50,
   });
-  const [buttonStyles] = useSprings(7, (idx: number) => ({
+  const [buttonStyles] = useSprings(8, (idx: number) => ({
     from: {
       opacity: 0,
       y: 10,
@@ -171,6 +171,20 @@ const Home = () => {
               to="/stats"
               title="Stats"
               description="View some of your personal stats."
+            />
+          </animated.div>
+        </Grid2>
+        <Grid2
+          size={{
+            xs: 12,
+            md: 6,
+          }}
+        >
+          <animated.div style={buttonStyles[7]}>
+            <HomeButton
+              to="/archives"
+              title="Archives"
+              description="Your favourite cloud file service."
             />
           </animated.div>
         </Grid2>

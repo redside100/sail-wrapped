@@ -18,11 +18,11 @@ const Likes = () => {
 
   const listData = useMemo(
     () => (tab === "media" ? likes?.attachments : likes?.messages) ?? [],
-    [tab, likes?.attachments, likes?.messages]
+    [tab, likes?.attachments, likes?.messages],
   );
   const [pageEntities, totalPages, page, setPage] = usePagination(
     listData,
-    MAX_PER_PAGE
+    MAX_PER_PAGE,
   );
 
   const [headerStyle] = useSprings(3, (idx: number) => ({
@@ -50,7 +50,7 @@ const Likes = () => {
       },
       reset: true,
     }),
-    [page, tab]
+    [page, tab],
   );
   const { year } = useContext(UserContext);
 

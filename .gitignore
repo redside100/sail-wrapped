@@ -163,6 +163,7 @@ cython_debug/
 
 *.db
 backend/client_secret
+backend/s3_credentials.json
 export/*
 attachments/*
 avatars/*

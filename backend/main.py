@@ -1,12 +1,13 @@
 from contextlib import asynccontextmanager
 import os
 import time
-from typing import Annotated
+from typing import Annotated, List
 import aiohttp
-from fastapi import FastAPI, HTTPException, Header, Path
+from fastapi import FastAPI, HTTPException, Header, Path, Depends
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import async_db
+from s3_client import AsyncS3Client
 from consts import ATTACHMENT_EXCLUDE_REPEAT_COUNT
 from util import (
     check_token,
@@ -26,21 +27,30 @@ attachment_session_cache: TTLCache[str, List[str]] = TTLCache(
     ttl=3600, maxsize=float("inf")
 )
 session = None
+s3_client = None
 
 CURRENT_YEAR = 2024
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    global session
+    global session, s3_client
     session = aiohttp.ClientSession()
+    s3_client = AsyncS3Client()
+    await s3_client.connect()
     await async_db.init()
     yield
     await session.close()
+    await s3_client.close()
     await async_db.cleanup()
 
 
 app = FastAPI(lifespan=lifespan)
+
+def get_current_token(token: Annotated[str | None, Header()] = None) -> str:
+    check_token(token_cache, token)
+    return token
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -84,9 +94,8 @@ async def login(request: TokenRequestModel):
 
 @app.post("/refresh")
 async def refresh(
-    request: RefreshTokenRequestModel, token: Annotated[str | None, Header()] = None
+    request: RefreshTokenRequestModel, token: str = Depends(get_current_token)
 ):
-    check_token(token_cache, token)
     try:
         res = await refresh_token(session, request.refresh_token)
         new_access_token = res["access_token"]
@@ -110,7 +119,7 @@ async def refresh(
 
 
 @app.post("/logout")
-async def logout(token: Annotated[str | None, Header()] = None):
+async def logout(token: str = Depends(get_current_token)):
     if token in token_cache:
         del token_cache[token]
 
@@ -126,8 +135,7 @@ async def logout(token: Annotated[str | None, Header()] = None):
 
 
 @app.get("/info")
-async def user_info(token: Annotated[str | None, Header()] = None):
-    check_token(token_cache, token)
+async def user_info(token: str = Depends(get_current_token)):
     try:
         res = await get_token_info(session, token)
         return res["user"]
@@ -142,10 +150,9 @@ async def user_info(token: Annotated[str | None, Header()] = None):
 @app.get("/attachment/random")
 async def get_random_attachment(
     video_only: bool = False,
-    token: Annotated[str | None, Header()] = None,
+    token: str = Depends(get_current_token),
     year: int = CURRENT_YEAR,
 ):
-    check_token(token_cache, token)
     if token not in attachment_session_cache:
         attachment_session_cache[token] = []
 
@@ -166,11 +173,9 @@ async def get_random_attachment(
 @app.get("/attachment/view/{attachment_id}")
 async def get_attachment(
     attachment_id: Annotated[int, Path(title="The Attachment ID to retrieve")],
-    token: Annotated[str | None, Header()] = None,
+    token: str = Depends(get_current_token),
     year: int = CURRENT_YEAR,
 ):
-
-    check_token(token_cache, token)
     attachment = await async_db.get_attachment(year, attachment_id)
     if not attachment:
         raise HTTPException(status_code=404, detail="Attachment not found")
@@ -180,11 +185,10 @@ async def get_attachment(
 @app.get("/message/random")
 async def get_random_message(
     min_length: int,
-    token: Annotated[str | None, Header()] = None,
+    token: str = Depends(get_current_token),
     links_only: bool = False,
     year: int = CURRENT_YEAR,
 ):
-    check_token(token_cache, token)
     if min_length < 1:
         raise HTTPException(
             status_code=400, detail="The minimum length must be at least 1."
@@ -203,10 +207,9 @@ async def get_random_message(
 @app.get("/message/view/{message_id}")
 async def get_message(
     message_id: Annotated[int, Path(title="The Messaged ID to retrieve")],
-    token: Annotated[str | None, Header()] = None,
+    token: str = Depends(get_current_token),
     year: int = CURRENT_YEAR,
 ):
-    check_token(token_cache, token)
     message = await async_db.get_message(year, message_id)
     if not message:
         raise HTTPException(status_code=404, detail="Message not found")
@@ -215,9 +218,8 @@ async def get_message(
 
 @app.get("/likes")
 async def get_user_likes(
-    token: Annotated[str | None, Header()] = None, year: int = CURRENT_YEAR
+    token: str = Depends(get_current_token), year: int = CURRENT_YEAR
 ):
-    check_token(token_cache, token)
     return await async_db.get_likes_for_user(
         year, get_user_from_token(token_cache, token)
     )
@@ -225,9 +227,8 @@ async def get_user_likes(
 
 @app.post("/like")
 async def like(
-    request: LikeRequestModel, token: Annotated[str | None, Header()] = None
+    request: LikeRequestModel, token: str = Depends(get_current_token)
 ):
-    check_token(token_cache, token)
     discord_id = get_user_from_token(token_cache, token)
     await async_db.like(request.id, discord_id, request.is_attachment)
     return {"message": "Success"}
@@ -235,9 +236,8 @@ async def like(
 
 @app.post("/unlike")
 async def like(
-    request: LikeRequestModel, token: Annotated[str | None, Header()] = None
+    request: LikeRequestModel, token: str = Depends(get_current_token)
 ):
-    check_token(token_cache, token)
     discord_id = get_user_from_token(token_cache, token)
     await async_db.unlike(request.id, discord_id, request.is_attachment)
     return {"message": "Success"}
@@ -245,18 +245,16 @@ async def like(
 
 @app.get("/leaderboard")
 async def leaderboard(
-    token: Annotated[str | None, Header()] = None, year: int = CURRENT_YEAR
+    token: str = Depends(get_current_token), year: int = CURRENT_YEAR
 ):
-    check_token(token_cache, token)
     return await async_db.get_leaderboard(year)
 
 
 @app.get("/stats")
 async def stats(
-    token: Annotated[str | None, Header()] = None,
+    token: str = Depends(get_current_token),
     year: int = CURRENT_YEAR,
 ):
-    check_token(token_cache, token)
     discord_id = get_user_from_token(token_cache, token)
     user_stats = await async_db.get_stats(discord_id, year)
     if not user_stats:
@@ -280,10 +278,9 @@ async def stats(
 @app.get("/time_machine/{date}")
 async def time_machine(
     date: Annotated[str, Path(title="Date of snapshot in YYYY-MM-DD format")],
-    token: Annotated[str | None, Header()] = None,
+    token: str = Depends(get_current_token),
     year: int = CURRENT_YEAR,
 ):
-    check_token(token_cache, token)
     converted_date = datetime.strptime(date, "%Y-%m-%d")
     return await async_db.get_time_machine_screenshot(converted_date, year)
 
@@ -295,27 +292,24 @@ if __name__ == "__main__":
 
 @app.get("/mentions/graph")
 async def mention_graph(
-    token: Annotated[str | None, Header()] = None,
+    token: str = Depends(get_current_token),
     year: int = CURRENT_YEAR,
 ):
-    check_token(token_cache, token)
     return await async_db.get_mention_graph(year)
 
 
 @app.get("/charts")
 async def charts(
-    token: Annotated[str | None, Header()] = None,
+    token: str = Depends(get_current_token),
     year: int = CURRENT_YEAR,
 ):
-    check_token(token_cache, token)
     return await async_db.get_static_buckets(year)
 
 
 @app.get("/words/search")
 async def word_search(
-    word: str, token: Annotated[str | None, Header()] = None, year: int = CURRENT_YEAR
+    word: str, token: str = Depends(get_current_token), year: int = CURRENT_YEAR
 ):
-    check_token(token_cache, token)
     if len(word) < 1 or len(word) > 50:
         raise HTTPException(
             status_code=400, detail="The word must be 1 to 50 characters."
@@ -331,3 +325,19 @@ async def word_search(
         raise HTTPException(status_code=404, detail="No data for that word was found.")
 
     return word_data
+
+@app.get("/drive/list")
+async def drive_list(
+    prefix: str, token: str = Depends(get_current_token)
+) -> List[DriveObject]:
+    objects, common_prefixes = await s3_client.list_objects(prefix)
+    drive_objects = []
+    for common_prefix in common_prefixes:
+        drive_objects.append(DriveObject(key=common_prefix, is_directory=True))
+    for object in objects:
+        raw_metadata = object.get("Metadata")
+        user_info = DriveMetadata(**raw_metadata).to_user_info() if raw_metadata else UserInfo(id="0", username="Unknown", global_name="Unknown")
+        drive_objects.append(DriveObject(key=object["Key"], created=object["LastModified"], author=user_info))
+
+    return drive_objects
+
