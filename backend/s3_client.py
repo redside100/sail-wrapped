@@ -301,7 +301,9 @@ class AsyncS3Client:
         common_prefixes = []
         paginator = self._s3.get_paginator("list_objects_v2")
         async for page in paginator.paginate(Bucket=self.bucket, Prefix=full_prefix, Delimiter="/"):
-            objects.extend(page.get("Contents", []))
+            for object in page.get("Contents", []):
+                if object["Key"] != full_prefix:
+                    objects.append(object)
             common_prefixes.extend(cp["Prefix"] for cp in page.get("CommonPrefixes", []))
 
         return objects, common_prefixes

@@ -123,3 +123,11 @@ export const getObjectName = (key: string) => {
   }
   return segments[segments.length - 1];
 };
+
+export const getDisplayKey = (key: string) => {
+  const drivePrefix = "sw-drive/";
+  if (key.startsWith("sw-drive/")) {
+    return key.substring(drivePrefix.length);
+  }
+  return key;
+};

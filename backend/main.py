@@ -333,7 +333,8 @@ async def drive_list(
     objects, common_prefixes = await s3_client.list_objects(prefix)
     drive_objects = []
     for common_prefix in common_prefixes:
-        drive_objects.append(DriveObject(key=common_prefix, is_directory=True))
+        if common_prefix != prefix:
+            drive_objects.append(DriveObject(key=common_prefix, is_directory=True))
     for object in objects:
         raw_metadata = object.get("Metadata")
         user_info = DriveMetadata(**raw_metadata).to_user_info() if raw_metadata else UserInfo(id="0", username="Unknown", global_name="Unknown")
