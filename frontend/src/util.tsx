@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-export const usePagination = (
-  listData: any[],
+import { CDN_BASE } from "./consts";
+export const usePagination = <T,>(
+  listData: T[],
   entitiesPerPage: number,
-): [any[], number, number, (_: number) => void] => {
+): [T[], number, number, (newPage: number) => void] => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [currentPage, setCurrentPage] = useState<number>(
     Number(searchParams.get("page")) ?? 1,
@@ -130,4 +131,11 @@ export const getDisplayKey = (key: string) => {
     return key.substring(drivePrefix.length);
   }
   return key;
+};
+
+export const getDriveSrc = (key: string) => {
+  if (key.startsWith("/")) {
+    return `${CDN_BASE}${key}`;
+  }
+  return `${CDN_BASE}/${key}`;
 };

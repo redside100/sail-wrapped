@@ -20,11 +20,11 @@ const Leaderboard = () => {
     () =>
       (tab === "media" ? leaderboard?.attachments : leaderboard?.messages) ??
       [],
-    [tab, leaderboard?.attachments, leaderboard?.messages]
+    [tab, leaderboard?.attachments, leaderboard?.messages],
   );
   const [pageEntities, totalPages, page, setPage] = usePagination(
     listData,
-    MAX_PER_PAGE
+    MAX_PER_PAGE,
   );
 
   const [headerStyle] = useSprings(3, (idx: number) => ({
@@ -52,7 +52,7 @@ const Leaderboard = () => {
       },
       reset: true,
     }),
-    [page, tab]
+    [page, tab],
   );
 
   const { year } = useContext(UserContext);
@@ -103,7 +103,7 @@ const Leaderboard = () => {
               <Tab label={<Typography>Messages</Typography>} value="messages" />
             </Tabs>
           </animated.div>
-          {pageEntities.map((entity, idx: number) => (
+          {pageEntities.map((entity: any, idx: number) => (
             <animated.div style={entryStyle[idx]} key={idx}>
               <GenericEntry
                 entryType={tab === "media" ? "attachment" : "message"}

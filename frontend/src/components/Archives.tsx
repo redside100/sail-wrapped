@@ -2,19 +2,56 @@ import { useEffect, useMemo, useState } from "react";
 import { getDriveObjects } from "../api";
 import toast from "react-hot-toast";
 import { animated, useSprings } from "@react-spring/web";
-import { Box, Stack, Tooltip, Typography } from "@mui/material";
-import { FolderCopy } from "@mui/icons-material";
-import { getDisplayKey, getObjectName, usePersistedSearchParam } from "../util";
+import { Box, Pagination, Stack, Tooltip, Typography } from "@mui/material";
+import { ArrowBack, FolderCopy, Photo, VideoFile } from "@mui/icons-material";
+import {
+  getDisplayKey,
+  getDriveSrc,
+  getObjectName,
+  usePagination,
+  usePersistedSearchParam,
+} from "../util";
 import { LoadingAnimation } from "./LoadingPage";
-import { COLORS } from "../consts";
+import { COLORS, PHOTO_EXT_LIST, VIDEO_EXT_LIST } from "../consts";
+
+type DriveObject = {
+  key: string;
+  created: string;
+  is_directory: boolean;
+  author: {
+    avatar: string;
+    global_name: string;
+    username: string;
+    id: string;
+  };
+};
 
 const ArchiveItem = ({
   driveObject,
   navigatePrefix,
 }: {
-  driveObject: any;
+  driveObject: DriveObject;
   navigatePrefix: (key: string) => void;
 }) => {
+  const isImage = useMemo(
+    () => PHOTO_EXT_LIST.some((ext: string) => driveObject.key.endsWith(ext)),
+    [driveObject],
+  );
+
+  const icon = useMemo(() => {
+    if (driveObject.is_directory) {
+      return <FolderCopy sx={{ color: "white", fontSize: 20 }} />;
+    } else if (isImage) {
+      return <Photo sx={{ color: "white", fontSize: 20 }} />;
+    } else if (
+      VIDEO_EXT_LIST.some((ext: string) => driveObject.key.endsWith(ext))
+    ) {
+      return <VideoFile sx={{ color: "white", fontSize: 20 }} />;
+    }
+
+    return null;
+  }, [driveObject]);
+
   const component = (
     <Stack
       sx={{
@@ -38,11 +75,31 @@ const ArchiveItem = ({
       }}
     >
       <Stack direction="x" gap={0.5} alignItems="center">
-        {driveObject.is_directory && (
-          <FolderCopy sx={{ color: "white", fontSize: 20 }} />
-        )}
+        {icon}
         <Typography noWrap>{getObjectName(driveObject.key)}</Typography>
       </Stack>
+      {isImage && (
+        <Box
+          sx={{
+            flex: 1,
+            width: "100%",
+            overflow: "hidden",
+            mt: 1,
+            borderRadius: 1,
+          }}
+        >
+          <Box
+            component="img"
+            src={getDriveSrc(driveObject.key)}
+            sx={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              display: "block",
+            }}
+          />
+        </Box>
+      )}
     </Stack>
   );
 
@@ -73,12 +130,12 @@ const Archives = () => {
   }));
 
   const [prefix, setPrefix] = usePersistedSearchParam("prefix", "/");
-  const [driveObjects, setDriveObjects] = useState([]);
+  const [driveObjects, setDriveObjects] = useState<DriveObject[]>([]);
 
   const [fileObjects, directoryObjects] = useMemo(
     () =>
       driveObjects.reduce(
-        (acc: any, cur: any) => {
+        (acc: DriveObject[][], cur: DriveObject) => {
           if (cur.is_directory) {
             acc[1].push(cur);
           } else {
@@ -89,6 +146,11 @@ const Archives = () => {
         [[], []],
       ),
     [driveObjects],
+  );
+
+  const [visibleFileObjects, totalPages, page, setPage] = usePagination(
+    fileObjects,
+    50,
   );
 
   const displayPrefix = useMemo(() => {
@@ -136,12 +198,24 @@ const Archives = () => {
             }}
             padding={3}
           >
-            <Box
-              sx={{
-                width: "100%",
-                backgroundColor: "",
-              }}
-            >
+            <Box display="flex" gap={2} alignItems="center">
+              <ArrowBack
+                sx={{
+                  color: "white",
+                  "&:hover": { opacity: 0.8, cursor: "pointer" },
+                }}
+                onClick={() => {
+                  if (prefix == "/" || prefix == "") {
+                    return;
+                  }
+                  const parts = prefix.split("/").filter(Boolean);
+                  const newPrefix =
+                    parts.length > 1
+                      ? "/" + parts.slice(0, -1).join("/") + "/"
+                      : "/";
+                  setPrefix(newPrefix);
+                }}
+              />
               <Typography>{displayPrefix}</Typography>
             </Box>
             {loading && (
@@ -150,18 +224,34 @@ const Archives = () => {
               </Box>
             )}
             {!loading && (
-              <Stack gap={3}>
+              <Stack gap={3} mt={3}>
                 <Stack direction="x" flexWrap="1" gap={2}>
-                  {directoryObjects.map((obj: any) => (
+                  {directoryObjects.map((obj: DriveObject) => (
                     <ArchiveItem driveObject={obj} navigatePrefix={setPrefix} />
                   ))}
                 </Stack>
                 <Stack direction="x" flexWrap="1" gap={2}>
-                  {fileObjects.map((obj: any) => (
+                  {fileObjects.map((obj: DriveObject) => (
                     <ArchiveItem driveObject={obj} navigatePrefix={setPrefix} />
                   ))}
                 </Stack>
               </Stack>
+            )}
+            {totalPages > 1 && (
+              <Box alignSelf="center">
+                <Pagination
+                  count={totalPages}
+                  page={page}
+                  onChange={(_, value) => setPage(value)}
+                  color="primary"
+                  sx={{
+                    "& .MuiPaginationItem-root": {
+                      color: "#fff",
+                    },
+                    mt: 2,
+                  }}
+                />
+              </Box>
             )}
           </Stack>
         </animated.div>

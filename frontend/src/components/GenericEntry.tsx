@@ -29,7 +29,7 @@ const GenericEntry = ({
       "",
     ];
     return VIDEO_EXT_LIST.includes(
-      `.${fileNameParts[fileNameParts.length - 1]}`
+      `.${fileNameParts[fileNameParts.length - 1]}`,
     );
   }, [entryType, entryInfo?.attachment_id]);
 
@@ -64,7 +64,7 @@ const GenericEntry = ({
         navigate(
           entryType === "attachment"
             ? `/media/view/${entryInfo.attachment_id}`
-            : `/messages/view/${entryInfo.message_id}`
+            : `/messages/view/${entryInfo.message_id}`,
         )
       }
     >

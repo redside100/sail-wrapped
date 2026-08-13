@@ -214,3 +214,5 @@ export const EASTER_DATE_OFFSET: Record<number, number> = {
   2024: 90,
   2025: 109,
 };
+
+export const CDN_BASE = "https://redside.tor1.cdn.digitaloceanspaces.com";
