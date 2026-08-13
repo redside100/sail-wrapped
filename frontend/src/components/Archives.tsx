@@ -2,7 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { getDriveObjects } from "../api";
 import toast from "react-hot-toast";
 import { animated, useSprings } from "@react-spring/web";
-import { Box, Pagination, Stack, Tooltip, Typography } from "@mui/material";
+import {
+  Box,
+  Grid2,
+  Pagination,
+  Stack,
+  Tooltip,
+  Typography,
+} from "@mui/material";
 import { ArrowBack, FolderCopy, Photo, VideoFile } from "@mui/icons-material";
 import {
   getDisplayKey,
@@ -53,60 +60,75 @@ const ArchiveItem = ({
   }, [driveObject]);
 
   const component = (
-    <Stack
-      sx={{
-        width: 140,
-        height: driveObject.is_directory ? 25 : 140,
-        borderRadius: 2,
-        backgroundColor: COLORS.BLURPLE,
-        backgroundOpacity: 0.5,
-        padding: 1,
-        transition: "0.15s ease-in-out",
-        "&:hover": {
-          backgroundColor: `rgba(88, 101, 242, 0.6) !important`,
-          transform: "translateY(-2px)",
-          cursor: "pointer",
-        },
-      }}
-      onClick={() => {
-        if (driveObject.is_directory) {
-          navigatePrefix(getDisplayKey(driveObject.key));
-        }
+    <Grid2
+      size={{
+        xs: 4,
+        md: 2,
       }}
     >
-      <Stack direction="x" gap={0.5} alignItems="center">
-        {icon}
-        <Typography noWrap>{getObjectName(driveObject.key)}</Typography>
-      </Stack>
-      {isImage && (
-        <Box
-          sx={{
-            flex: 1,
-            width: "100%",
-            overflow: "hidden",
-            mt: 1,
-            borderRadius: 1,
-          }}
-        >
+      <Stack
+        sx={{
+          height: driveObject.is_directory ? 25 : 180,
+          borderRadius: 2,
+          backgroundColor: COLORS.BLURPLE,
+          backgroundOpacity: 0.5,
+          padding: 1,
+          transition: "0.15s ease-in-out",
+          "&:hover": {
+            backgroundColor: `rgba(88, 101, 242, 0.6) !important`,
+            transform: "translateY(-2px)",
+            cursor: "pointer",
+          },
+        }}
+        onClick={() => {
+          if (driveObject.is_directory) {
+            navigatePrefix(getDisplayKey(driveObject.key));
+          }
+        }}
+      >
+        <Stack direction="x" gap={0.5} alignItems="center">
+          {icon}
+          <Typography noWrap>{getObjectName(driveObject.key)}</Typography>
+        </Stack>
+        {isImage && (
           <Box
-            component="img"
-            src={getDriveSrc(driveObject.key)}
             sx={{
+              flex: 1,
               width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              display: "block",
+              overflow: "hidden",
+              mt: 1,
+              borderRadius: 1,
             }}
-          />
-        </Box>
-      )}
-    </Stack>
+          >
+            <Box
+              component="img"
+              src={getDriveSrc(driveObject.key)}
+              sx={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                display: "block",
+              }}
+            />
+          </Box>
+        )}
+      </Stack>
+    </Grid2>
   );
 
   if (!driveObject.is_directory) {
     const created = new Date(driveObject.created).toLocaleString();
     return (
-      <Tooltip title={<Typography>Created {created}</Typography>}>
+      <Tooltip
+        title={
+          <>
+            <Typography>Created {created}</Typography>
+            <Typography>Uploaded by @{driveObject.author.username}</Typography>
+          </>
+        }
+        enterDelay={500}
+        arrow
+      >
         {component}
       </Tooltip>
     );
@@ -150,7 +172,7 @@ const Archives = () => {
 
   const [visibleFileObjects, totalPages, page, setPage] = usePagination(
     fileObjects,
-    50,
+    24,
   );
 
   const displayPrefix = useMemo(() => {
@@ -230,11 +252,11 @@ const Archives = () => {
                     <ArchiveItem driveObject={obj} navigatePrefix={setPrefix} />
                   ))}
                 </Stack>
-                <Stack direction="x" flexWrap="1" gap={2}>
-                  {fileObjects.map((obj: DriveObject) => (
+                <Grid2 container spacing={2}>
+                  {visibleFileObjects.map((obj: DriveObject) => (
                     <ArchiveItem driveObject={obj} navigatePrefix={setPrefix} />
                   ))}
-                </Stack>
+                </Grid2>
               </Stack>
             )}
             {totalPages > 1 && (
