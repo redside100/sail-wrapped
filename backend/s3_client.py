@@ -57,7 +57,9 @@ class UploadJob(BaseModel):
     completed: int = 0
     failed: int = 0
     done: bool = False
-    results: list = Field(default_factory=list)  # list[UploadResult], filled as they finish
+    results: list = Field(
+        default_factory=list
+    )  # list[UploadResult], filled as they finish
 
     @property
     def in_progress(self) -> int:
@@ -159,13 +161,14 @@ class AsyncS3Client:
                 if not extra_args:
                     extra_args = {}
 
-                extra_args.update({'ACL': 'public-read'})
+                extra_args.update({"ACL": "public-read"})
                 await self._s3.upload_file(
-                    str(local_path), self.bucket, key, ExtraArgs=extra_args
+                    str(local_path),
+                    self.bucket,
+                    key,
+                    ExtraArgs=extra_args,
                 )
-                logger.info(
-                    "Uploaded %s -> s3://%s/%s", local_path, self.bucket, key
-                )
+                logger.info("Uploaded %s -> s3://%s/%s", local_path, self.bucket, key)
                 return UploadResult(local_path=str(local_path), key=key, success=True)
             except ClientError as e:
                 logger.error("Failed to upload %s: %s", local_path, e)
@@ -180,9 +183,7 @@ class AsyncS3Client:
             try:
                 Path(local_path).parent.mkdir(parents=True, exist_ok=True)
                 await self._s3.download_file(self.bucket, key, str(local_path))
-                logger.info(
-                    "Downloaded s3://%s/%s -> %s", self.bucket, key, local_path
-                )
+                logger.info("Downloaded s3://%s/%s -> %s", self.bucket, key, local_path)
                 return UploadResult(local_path=str(local_path), key=key, success=True)
             except ClientError as e:
                 logger.error("Failed to download %s: %s", key, e)
@@ -203,8 +204,7 @@ class AsyncS3Client:
         Individual failures don't stop the rest of the batch.
         """
         tasks = [
-            self.upload_file(local_path, key, extra_args)
-            for local_path, key in files
+            self.upload_file(local_path, key, extra_args) for local_path, key in files
         ]
         return await asyncio.gather(*tasks)
 
@@ -227,7 +227,9 @@ class AsyncS3Client:
         job = UploadJob(job_id=job_id, total=len(files))
         self._jobs[job_id] = job
 
-        self.job_tasks[job_id] = asyncio.create_task(self._run_upload_job(job, files, extra_args))
+        self.job_tasks[job_id] = asyncio.create_task(
+            self._run_upload_job(job, files, extra_args)
+        )
         return job_id
 
     async def _run_upload_job(
@@ -300,11 +302,15 @@ class AsyncS3Client:
         objects = []
         common_prefixes = []
         paginator = self._s3.get_paginator("list_objects_v2")
-        async for page in paginator.paginate(Bucket=self.bucket, Prefix=full_prefix, Delimiter="/"):
+        async for page in paginator.paginate(
+            Bucket=self.bucket, Prefix=full_prefix, Delimiter="/"
+        ):
             for object in page.get("Contents", []):
                 if object["Key"] != full_prefix:
                     objects.append(object)
-            common_prefixes.extend(cp["Prefix"] for cp in page.get("CommonPrefixes", []))
+            common_prefixes.extend(
+                cp["Prefix"] for cp in page.get("CommonPrefixes", [])
+            )
 
         return objects, common_prefixes
 
@@ -379,6 +385,7 @@ class AsyncS3Client:
 
 # ---------------- Example usage ----------------
 
+
 async def _example():
     logging.basicConfig(level=logging.INFO)
 
@@ -390,11 +397,13 @@ async def _example():
         print(result)
 
         # multiple files concurrently
-        results = await s3.upload_files([
-            ("data/a.csv", "datasets/a.csv"),
-            ("data/b.csv", "datasets/b.csv"),
-            ("data/c.csv", "datasets/c.csv"),
-        ])
+        results = await s3.upload_files(
+            [
+                ("data/a.csv", "datasets/a.csv"),
+                ("data/b.csv", "datasets/b.csv"),
+                ("data/c.csv", "datasets/c.csv"),
+            ]
+        )
         for r in results:
             status = "OK" if r.success else f"FAILED: {r.error}"
             print(f"{r.local_path} -> {r.key}: {status}")
@@ -403,14 +412,18 @@ async def _example():
         await s3.upload_directory("data/", prefix="datasets")
 
         # background job with progress polling
-        job_id = s3.start_upload_job([
-            ("data/x.csv", "datasets/x.csv"),
-            ("data/y.csv", "datasets/y.csv"),
-            ("data/z.csv", "datasets/z.csv"),
-        ])
+        job_id = s3.start_upload_job(
+            [
+                ("data/x.csv", "datasets/x.csv"),
+                ("data/y.csv", "datasets/y.csv"),
+                ("data/z.csv", "datasets/z.csv"),
+            ]
+        )
         while True:
             status = s3.get_job_status(job_id)
-            print(f"progress: {status.progress_pct}% ({status.completed} ok, {status.failed} failed)")
+            print(
+                f"progress: {status.progress_pct}% ({status.completed} ok, {status.failed} failed)"
+            )
             if status.done:
                 break
             await asyncio.sleep(0.5)

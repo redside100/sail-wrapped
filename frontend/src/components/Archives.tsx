@@ -10,16 +10,22 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import { ArrowBack, FolderCopy, Photo, VideoFile } from "@mui/icons-material";
+import {
+  ArrowBack,
+  FolderCopy,
+  InsertDriveFile,
+  Photo,
+  VideoFile,
+} from "@mui/icons-material";
 import {
   getDisplayKey,
   getDriveSrc,
   getObjectName,
   usePagination,
-  usePersistedSearchParam,
 } from "../util";
 import { LoadingAnimation } from "./LoadingPage";
 import { COLORS, PHOTO_EXT_LIST, VIDEO_EXT_LIST } from "../consts";
+import MultiFileUploader from "./FileUploader";
 
 type DriveObject = {
   key: string;
@@ -56,19 +62,20 @@ const ArchiveItem = ({
       return <VideoFile sx={{ color: "white", fontSize: 20 }} />;
     }
 
-    return null;
+    return <InsertDriveFile sx={{ color: "white", fontSize: 20 }} />;
   }, [driveObject]);
 
   const component = (
     <Grid2
       size={{
-        xs: 4,
-        md: 2,
+        xs: 6,
+        md: 3,
+        lg: 2,
       }}
     >
       <Stack
         sx={{
-          height: driveObject.is_directory ? 25 : 180,
+          height: driveObject.is_directory ? 25 : { xs: 170, md: 190 },
           borderRadius: 2,
           backgroundColor: COLORS.BLURPLE,
           backgroundOpacity: 0.5,
@@ -151,7 +158,7 @@ const Archives = () => {
     reset: true,
   }));
 
-  const [prefix, setPrefix] = usePersistedSearchParam("prefix", "/");
+  const [prefix, setPrefix] = useState("/");
   const [driveObjects, setDriveObjects] = useState<DriveObject[]>([]);
 
   const [fileObjects, directoryObjects] = useMemo(
@@ -175,6 +182,10 @@ const Archives = () => {
     24,
   );
 
+  useEffect(() => {
+    setPage(1);
+  }, [prefix]);
+
   const displayPrefix = useMemo(() => {
     if (!prefix.startsWith("/")) {
       return "/" + prefix;
@@ -182,18 +193,19 @@ const Archives = () => {
     return prefix;
   }, [prefix]);
 
+  const fetchPrefixContents = async () => {
+    const token = localStorage.getItem("access_token") ?? "";
+    setLoading(true);
+    const [res, status] = await getDriveObjects(prefix, token);
+    if (status !== 200) {
+      toast.error("Failed to list objects.");
+      return;
+    }
+    setLoading(false);
+    setDriveObjects(res);
+  };
+
   useEffect(() => {
-    const fetchPrefixContents = async () => {
-      const token = localStorage.getItem("access_token") ?? "";
-      setLoading(true);
-      const [res, status] = await getDriveObjects(prefix, token);
-      if (status !== 200) {
-        toast.error("Failed to list objects.");
-        return;
-      }
-      setLoading(false);
-      setDriveObjects(res);
-    };
     fetchPrefixContents();
   }, [prefix]);
 
@@ -220,25 +232,31 @@ const Archives = () => {
             }}
             padding={3}
           >
-            <Box display="flex" gap={2} alignItems="center">
-              <ArrowBack
-                sx={{
-                  color: "white",
-                  "&:hover": { opacity: 0.8, cursor: "pointer" },
-                }}
-                onClick={() => {
-                  if (prefix == "/" || prefix == "") {
-                    return;
-                  }
-                  const parts = prefix.split("/").filter(Boolean);
-                  const newPrefix =
-                    parts.length > 1
-                      ? "/" + parts.slice(0, -1).join("/") + "/"
-                      : "/";
-                  setPrefix(newPrefix);
-                }}
+            <Box display="flex" justifyContent="space-between">
+              <Box display="flex" gap={2} alignItems="center">
+                <ArrowBack
+                  sx={{
+                    color: "white",
+                    "&:hover": { opacity: 0.8, cursor: "pointer" },
+                  }}
+                  onClick={() => {
+                    if (prefix == "/" || prefix == "") {
+                      return;
+                    }
+                    const parts = prefix.split("/").filter(Boolean);
+                    const newPrefix =
+                      parts.length > 1
+                        ? "/" + parts.slice(0, -1).join("/") + "/"
+                        : "/";
+                    setPrefix(newPrefix);
+                  }}
+                />
+                <Typography>{displayPrefix}</Typography>
+              </Box>
+              <MultiFileUploader
+                prefix={prefix}
+                onUploadFinished={fetchPrefixContents}
               />
-              <Typography>{displayPrefix}</Typography>
             </Box>
             {loading && (
               <Box mt={3}>
@@ -247,11 +265,11 @@ const Archives = () => {
             )}
             {!loading && (
               <Stack gap={3} mt={3}>
-                <Stack direction="x" flexWrap="1" gap={2}>
+                <Grid2 container spacing={2}>
                   {directoryObjects.map((obj: DriveObject) => (
                     <ArchiveItem driveObject={obj} navigatePrefix={setPrefix} />
                   ))}
-                </Stack>
+                </Grid2>
                 <Grid2 container spacing={2}>
                   {visibleFileObjects.map((obj: DriveObject) => (
                     <ArchiveItem driveObject={obj} navigatePrefix={setPrefix} />
@@ -288,8 +306,8 @@ const Archives = () => {
             transform: "translateY(-4px)",
           },
           width: {
-            xs: 60,
-            md: 120,
+            xs: 40,
+            md: 100,
           },
         }}
       >

@@ -1,9 +1,21 @@
+import asyncio
 from contextlib import asynccontextmanager
 import os
 import time
 from typing import Annotated, List
+import aiofiles
 import aiohttp
-from fastapi import FastAPI, HTTPException, Header, Path, Depends
+from fastapi import (
+    FastAPI,
+    File,
+    Form,
+    HTTPException,
+    Header,
+    Path,
+    Depends,
+    Response,
+    UploadFile,
+)
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import async_db
@@ -47,9 +59,11 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+
 def get_current_token(token: Annotated[str | None, Header()] = None) -> str:
     check_token(token_cache, token)
     return token
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -226,18 +240,14 @@ async def get_user_likes(
 
 
 @app.post("/like")
-async def like(
-    request: LikeRequestModel, token: str = Depends(get_current_token)
-):
+async def like(request: LikeRequestModel, token: str = Depends(get_current_token)):
     discord_id = get_user_from_token(token_cache, token)
     await async_db.like(request.id, discord_id, request.is_attachment)
     return {"message": "Success"}
 
 
 @app.post("/unlike")
-async def like(
-    request: LikeRequestModel, token: str = Depends(get_current_token)
-):
+async def like(request: LikeRequestModel, token: str = Depends(get_current_token)):
     discord_id = get_user_from_token(token_cache, token)
     await async_db.unlike(request.id, discord_id, request.is_attachment)
     return {"message": "Success"}
@@ -326,6 +336,7 @@ async def word_search(
 
     return word_data
 
+
 @app.get("/drive/list")
 async def drive_list(
     prefix: str, token: str = Depends(get_current_token)
@@ -337,8 +348,74 @@ async def drive_list(
             drive_objects.append(DriveObject(key=common_prefix, is_directory=True))
     for object in objects:
         raw_metadata = object.get("Metadata")
-        user_info = DriveMetadata(**raw_metadata).to_user_info() if raw_metadata else UserInfo(id="0", username="Unknown", global_name="Unknown")
-        drive_objects.append(DriveObject(key=object["Key"], created=object["LastModified"], author=user_info))
+        user_info = (
+            DriveMetadata(**raw_metadata).to_user_info()
+            if raw_metadata
+            else UserInfo(id="0", username="Unknown", global_name="Unknown")
+        )
+        drive_objects.append(
+            DriveObject(
+                key=object["Key"], created=object["LastModified"], author=user_info
+            )
+        )
 
     return drive_objects
 
+
+@app.post("/drive/upload")
+async def drive_upload(
+    files: Annotated[List[UploadFile], File()],
+    prefix: Annotated[str, Form()],
+    overwrite: Annotated[bool, Form()] = False,
+    token: str = Depends(get_current_token),
+) -> Response:
+
+    if not prefix.endswith("/"):
+        prefix += "/"
+
+    if not overwrite:
+        existing_objects, _ = await s3_client.list_objects(prefix)
+
+        name_set = {os.path.basename(file.filename) for file in files}
+        collided_names = [
+            os.path.basename(object["Key"])
+            for object in existing_objects
+            if os.path.basename(object["Key"]) in name_set
+        ]
+
+        if collided_names:
+            raise HTTPException(status_code=409, detail={"existing": collided_names})
+
+    user_info = await get_token_info(session, token)
+    user = user_info["user"]
+
+    async with aiofiles.tempfile.TemporaryDirectory() as temp_dir:
+
+        async def write_tempfile(file: UploadFile):
+            file_path = os.path.join(temp_dir, os.path.basename(file.filename))
+            async with aiofiles.open(file_path, "wb+") as f:
+                while content := await file.read(65536):
+                    await f.write(content)
+
+        tasks = [write_tempfile(file) for file in files]
+        await asyncio.gather(*tasks)
+
+        file_paths = []
+        for file in files:
+            local_file = os.path.join(temp_dir, os.path.basename(file.filename))
+            key = prefix + os.path.basename(file.filename)
+            file_paths.append((local_file, key))
+
+        await s3_client.upload_files(
+            file_paths,
+            extra_args={
+                "Metadata": DriveMetadata(
+                    author_id=user.get("id", "0"),
+                    author_username=user.get("username", "Unknown"),
+                    author_avatar=user.get("avatar", ""),
+                    author_global_name=user.get("global_name", "Unknown"),
+                ).model_dump()
+            },
+        )
+
+    return Response(status_code=200)
