@@ -1,11 +1,20 @@
 import { useContext, useEffect, useMemo, useState } from "react";
-import { getDriveObjects } from "../../api";
+import { deleteDriveObjects, getDriveObjects } from "../../api";
 import toast from "react-hot-toast";
 import { animated, useSprings } from "@react-spring/web";
-import { Box, Grid2, Pagination, Stack, Typography } from "@mui/material";
+import {
+  Box,
+  Grid2,
+  Pagination,
+  Stack,
+  Tooltip,
+  Typography,
+} from "@mui/material";
 import {
   ArrowBack,
   AudioFile,
+  Close,
+  Delete,
   FolderCopy,
   InsertDriveFile,
   Photo,
@@ -28,6 +37,7 @@ import MultiFileUploader from "./FileUploader";
 import MediaViewer from "./MediaViewer";
 import { DriveObject } from "./types";
 import { DriveContext } from "./DriveContext";
+import ConfirmationDialog from "./ConfirmationDialog";
 
 const ArchiveItem = ({
   driveObject,
@@ -36,7 +46,13 @@ const ArchiveItem = ({
   driveObject: DriveObject;
   navigatePrefix: (key: string) => void;
 }) => {
-  const { setActiveDriveObject } = useContext(DriveContext);
+  const {
+    setActiveDriveObject,
+    selectedKeys,
+    setSelectedKeys,
+    driveObjects,
+    visibleObjects,
+  } = useContext(DriveContext);
   const [isImage, isVideo, isAudio] = useMemo(
     () => [
       PHOTO_EXT_LIST.some((ext: string) => driveObject.key.endsWith(ext)),
@@ -44,6 +60,10 @@ const ArchiveItem = ({
       AUDIO_EXT_LIST.some((ext: string) => driveObject.key.endsWith(ext)),
     ],
     [driveObject],
+  );
+  const isSelected = useMemo(
+    () => selectedKeys.some((key) => driveObject.key === key),
+    [selectedKeys, visibleObjects],
   );
 
   const icon = useMemo(() => {
@@ -60,7 +80,7 @@ const ArchiveItem = ({
     return <InsertDriveFile sx={{ color: "white", fontSize: 20 }} />;
   }, [driveObject]);
 
-  return (
+  const component = (
     <Grid2
       size={{
         xs: 6,
@@ -72,21 +92,63 @@ const ArchiveItem = ({
         sx={{
           height: driveObject.is_directory ? 25 : { xs: 170, md: 190 },
           borderRadius: 2,
-          backgroundColor: COLORS.BLURPLE,
+          backgroundColor: isSelected ? COLORS.LINK : COLORS.BLURPLE,
           backgroundOpacity: 0.5,
           padding: 1,
           transition: "0.15s ease-in-out",
           "&:hover": {
-            backgroundColor: `rgba(88, 101, 242, 0.6) !important`,
+            backgroundColor: !isSelected
+              ? `rgba(88, 101, 242, 0.6) !important`
+              : COLORS.LINK,
             transform: "translateY(-2px)",
             cursor: "pointer",
           },
+          userSelect: "none",
         }}
-        onClick={() => {
+        onClick={(e: React.MouseEvent) => {
           if (driveObject.is_directory) {
             navigatePrefix(getDisplayKey(driveObject.key));
             return;
           }
+          // Selection add
+          if (e.ctrlKey) {
+            if (!isSelected) {
+              setSelectedKeys([...selectedKeys, driveObject.key]);
+            } else {
+              setSelectedKeys(
+                selectedKeys.filter((key: string) => key !== driveObject.key),
+              );
+            }
+            return;
+          }
+
+          // Selection range edit
+          if (e.shiftKey) {
+            const firstIndex = driveObjects.findIndex((obj: DriveObject) =>
+              selectedKeys.some((key: string) => obj.key === key),
+            );
+            const currentIndex = driveObjects.findIndex(
+              (obj: DriveObject) => obj.key === driveObject.key,
+            );
+            if (currentIndex === -1) {
+              return;
+            }
+            if (firstIndex === -1) {
+              setSelectedKeys([...selectedKeys, driveObject.key]);
+              return;
+            }
+            const [start, end] = [
+              Math.min(currentIndex, firstIndex),
+              Math.max(currentIndex, firstIndex),
+            ];
+            setSelectedKeys(
+              driveObjects
+                .slice(start, end + 1)
+                .map((obj: DriveObject) => obj.key),
+            );
+            return;
+          }
+
           setActiveDriveObject(driveObject);
         }}
       >
@@ -119,6 +181,20 @@ const ArchiveItem = ({
       </Stack>
     </Grid2>
   );
+
+  if (!driveObject.is_directory && selectedKeys.length === 0) {
+    return (
+      <Tooltip
+        title={<Typography>Hold Ctrl or Shift to select</Typography>}
+        arrow
+        enterDelay={500}
+        enterNextDelay={500}
+      >
+        {component}
+      </Tooltip>
+    );
+  }
+  return component;
 };
 const Archives = () => {
   const [loading, setLoading] = useState(false);
@@ -138,7 +214,6 @@ const Archives = () => {
 
   const [prefix, setPrefix] = useState("/");
   const [driveObjects, setDriveObjects] = useState<DriveObject[]>([]);
-
   const [fileObjects, directoryObjects] = useMemo(
     () =>
       driveObjects.reduce(
@@ -154,6 +229,9 @@ const Archives = () => {
       ),
     [driveObjects],
   );
+
+  const [selectedFileKeys, setSelectedFileKeys] = useState<string[]>([]);
+
   const [activeDriveObject, setActiveDriveObject] = useState<
     DriveObject | undefined
   >(undefined);
@@ -165,6 +243,7 @@ const Archives = () => {
 
   useEffect(() => {
     setPage(1);
+    setSelectedFileKeys([]);
   }, [prefix]);
 
   const displayPrefix = useMemo(() => {
@@ -190,12 +269,17 @@ const Archives = () => {
     fetchPrefixContents();
   }, [prefix]);
 
+  const [deletionDialogOpen, setDeletionDialogOpen] = useState(false);
+
   return (
     <DriveContext.Provider
       value={{
         activeDriveObject,
         setActiveDriveObject,
+        driveObjects: driveObjects,
         visibleObjects: visibleFileObjects,
+        selectedKeys: selectedFileKeys,
+        setSelectedKeys: setSelectedFileKeys,
       }}
     >
       <Stack justifyContent="center" alignItems="center" p={3}>
@@ -253,13 +337,48 @@ const Archives = () => {
               </Box>
             )}
             {!loading && (
-              <Stack gap={3} mt={3}>
+              <Stack gap={1} mt={3}>
+                {selectedFileKeys.length > 0 && (
+                  <Stack
+                    direction="x"
+                    gap={1}
+                    alignItems="center"
+                    sx={{
+                      padding: 1,
+                      backgroundColor: "rgba(0, 0, 0, 0.2)",
+                      borderRadius: 1,
+                    }}
+                  >
+                    <Tooltip title={<Typography>Deselect all</Typography>}>
+                      <Close
+                        sx={{
+                          color: "white",
+                          "&:hover": { opacity: 0.8, cursor: "pointer" },
+                        }}
+                        onClick={() => setSelectedFileKeys([])}
+                      />
+                    </Tooltip>
+                    <Typography variant="h5">
+                      {selectedFileKeys.length} item
+                      {selectedFileKeys.length === 1 ? "" : "s"} selected
+                    </Typography>
+                    <Tooltip title={<Typography>Delete</Typography>}>
+                      <Delete
+                        sx={{
+                          color: "white",
+                          "&:hover": { opacity: 0.8, cursor: "pointer" },
+                        }}
+                        onClick={() => setDeletionDialogOpen(true)}
+                      />
+                    </Tooltip>
+                  </Stack>
+                )}
                 <Grid2 container spacing={2}>
                   {directoryObjects.map((obj: DriveObject) => (
                     <ArchiveItem driveObject={obj} navigatePrefix={setPrefix} />
                   ))}
                 </Grid2>
-                <Grid2 container spacing={2}>
+                <Grid2 container spacing={2} mt={2}>
                   {visibleFileObjects.map((obj: DriveObject) => (
                     <ArchiveItem driveObject={obj} navigatePrefix={setPrefix} />
                   ))}
@@ -303,6 +422,36 @@ const Archives = () => {
         <img src="./pusheen_book.png" width="100%" />
       </Box>
       <MediaViewer />
+      <ConfirmationDialog
+        open={deletionDialogOpen}
+        onClose={() => setDeletionDialogOpen(false)}
+        body={
+          <>
+            Are you sure you want to delete {selectedFileKeys.length} file
+            {selectedFileKeys.length === 1 ? "" : "s"}?
+          </>
+        }
+        title={`Delete file${selectedFileKeys.length === 1 ? "" : "s"}?`}
+        confirmLabel="Delete"
+        onConfirm={async () => {
+          setDeletionDialogOpen(false);
+          const token = localStorage.getItem("access_token") ?? "";
+          const toastId = toast.loading(
+            `Deleting ${selectedFileKeys.length} items...`,
+          );
+          const status = await deleteDriveObjects(selectedFileKeys, token);
+          if (status !== 200) {
+            toast.error("Failed to delete items.");
+            return;
+          }
+          toast.remove(toastId);
+          toast.success(
+            `Deleted ${selectedFileKeys.length} item${selectedFileKeys.length === 1 ? "" : "s"}!`,
+          );
+          setSelectedFileKeys([]);
+          await fetchPrefixContents();
+        }}
+      />
     </DriveContext.Provider>
   );
 };

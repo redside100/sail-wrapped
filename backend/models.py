@@ -177,11 +177,13 @@ class WordData(BaseModel):
     total_count: int
     buckets: List[TimestampBucket]
 
+
 class DriveObject(BaseModel):
     key: str
     created: Optional[datetime] = None
     author: Optional[UserInfo] = None
     is_directory: bool = False
+
 
 class DriveMetadata(BaseModel):
     model_config = ConfigDict(extra="allow")
@@ -192,4 +194,13 @@ class DriveMetadata(BaseModel):
     author_avatar: Optional[str] = "https://cdn.discordapp.com/embed/avatars/0.png"
 
     def to_user_info(self):
-        return UserInfo(id=self.author_id, username=self.author_username, global_name=self.author_global_name, avatar=self.author_avatar)
+        return UserInfo(
+            id=self.author_id,
+            username=self.author_username,
+            global_name=self.author_global_name,
+            avatar=self.author_avatar,
+        )
+
+
+class DriveDeleteRequest(BaseModel):
+    keys: List[str]

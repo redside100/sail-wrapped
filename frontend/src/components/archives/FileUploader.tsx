@@ -1,17 +1,9 @@
-import {
-  Box,
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-  Tooltip,
-  Typography,
-} from "@mui/material";
+import { Box, Tooltip, Typography } from "@mui/material";
 import { useRef, useState } from "react";
-import { API_BASE, COLORS } from "../../consts";
+import { API_BASE } from "../../consts";
 import { FileUpload } from "@mui/icons-material";
+import toast from "react-hot-toast";
+import ConfirmationDialog from "./ConfirmationDialog";
 
 const MultiFileUploader = ({
   prefix,
@@ -22,7 +14,7 @@ const MultiFileUploader = ({
 }) => {
   const fileInputRef = useRef<any>();
   const uploadEventRef = useRef<any>();
-  const [uploadingCount, setUploadingCount] = useState(0);
+  const [uploading, setUploading] = useState(false);
   const [existingFiles, setExistingFiles] = useState<string[]>([]);
 
   const handleButtonClick = () => {
@@ -42,7 +34,7 @@ const MultiFileUploader = ({
       return;
     }
 
-    setUploadingCount(selectedFiles.length);
+    setUploading(true);
 
     const formData = new FormData();
     selectedFiles.forEach((file: any) => formData.append("files", file));
@@ -51,6 +43,9 @@ const MultiFileUploader = ({
 
     try {
       const token = localStorage.getItem("access_token") ?? "";
+      const toastId = toast.loading(
+        `Uploading ${selectedFiles.length} file${selectedFiles.length === 1 ? "" : "s"}...`,
+      );
       const res = await fetch(`${API_BASE}/drive/upload`, {
         method: "POST",
         body: formData,
@@ -58,18 +53,26 @@ const MultiFileUploader = ({
           token,
         },
       });
+      toast.remove(toastId);
       if (res.status === 409 && !overwrite) {
         const body = await res.json();
         setExistingFiles(body.detail.existing ?? []);
         return;
+      } else if (res.status !== 200) {
+        toast.error("Failed to upload files.");
+        uploadEventRef.current = null;
+        return;
       }
       uploadEventRef.current = null;
+      toast.success(
+        `Uploaded ${selectedFiles.length} file${selectedFiles.length === 1 ? "" : "s"}!`,
+      );
       onUploadFinished?.();
     } catch (err) {
       console.error("Batch upload failed:", err);
       uploadEventRef.current = null;
     } finally {
-      setUploadingCount(0);
+      setUploading(false);
     }
   };
 
@@ -93,38 +96,24 @@ const MultiFileUploader = ({
           style={{ display: "none" }}
           multiple
         />
-        {uploadingCount === 0 && (
-          <FileUpload
-            sx={{
-              color: "white",
-              "&:hover": { opacity: 0.8, cursor: "pointer" },
-            }}
-            onClick={handleButtonClick}
-          />
-        )}
-        {uploadingCount > 0 && (
-          <Typography>
-            Uploading {uploadingCount} file{uploadingCount === 1 ? "" : "s"}...
-          </Typography>
-        )}
-        <Dialog open={existingFiles.length > 0} onClose={handleClose}>
-          <DialogTitle
-            sx={{
-              backgroundColor: COLORS.BLURPLE,
-            }}
-          >
-            Overwrite file{existingFiles.length === 1 ? "" : "s"}?
-          </DialogTitle>
-          <DialogContent
-            sx={{
-              backgroundColor: COLORS.BLURPLE,
-            }}
-          >
-            <DialogContentText
-              sx={{
-                color: "white",
-              }}
-            >
+        <FileUpload
+          sx={{
+            color: "white",
+            "&:hover": { opacity: 0.8, cursor: "pointer" },
+          }}
+          onClick={() => {
+            if (uploading) {
+              return;
+            }
+            handleButtonClick();
+          }}
+        />
+        <ConfirmationDialog
+          open={existingFiles.length > 0}
+          onClose={handleClose}
+          title={`Overwrite file${existingFiles.length === 1 ? "" : "s"}?`}
+          body={
+            <>
               The following {existingFiles.length} file
               {existingFiles.length === 1 ? "" : "s"} already exist
               {existingFiles.length === 1 ? "s" : ""} in this location:
@@ -136,36 +125,14 @@ const MultiFileUploader = ({
                   <li>and {existingFiles.length - 10} more...</li>
                 )}
               </ul>
-            </DialogContentText>
-          </DialogContent>
-          <DialogActions
-            sx={{
-              backgroundColor: COLORS.BLURPLE,
-              color: "white",
-            }}
-          >
-            <Button
-              onClick={handleClose}
-              autoFocus
-              sx={{
-                color: "white",
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={async () => {
-                setExistingFiles([]);
-                await upload(true);
-              }}
-              sx={{
-                color: "#ffa1a1",
-              }}
-            >
-              Overwrite
-            </Button>
-          </DialogActions>
-        </Dialog>
+            </>
+          }
+          onConfirm={async () => {
+            setExistingFiles([]);
+            await upload(true);
+          }}
+          confirmLabel="Overwrite"
+        />
       </Box>
     </Tooltip>
   );

@@ -246,3 +246,17 @@ export const getDriveObjects = async (prefix: string, token: string) => {
   });
   return [await res.json(), res.status];
 };
+
+export const deleteDriveObjects = async (keys: string[], token: string) => {
+  const res = await fetch(`${API_BASE}/drive/delete`, {
+    method: "DELETE",
+    body: JSON.stringify({
+      keys,
+    }),
+    headers: {
+      "Content-Type": "application/json",
+      token,
+    },
+  });
+  return res.status;
+};

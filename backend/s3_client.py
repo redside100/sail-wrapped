@@ -23,7 +23,7 @@ import asyncio
 import logging
 import uuid
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, Optional, Sequence
 
 import aioboto3
 from botocore.config import Config
@@ -208,92 +208,10 @@ class AsyncS3Client:
         ]
         return await asyncio.gather(*tasks)
 
-    # ---------- Background job tracking ----------
-
-    def start_upload_job(
-        self,
-        files: Sequence[tuple],  # (local_path, key) pairs
-        extra_args: Optional[dict] = None,
-    ) -> str:
-        """
-        Kick off upload_files() in the background and return a job_id
-        immediately. Poll progress with get_job_status(job_id).
-
-        Does not block — this is a sync method that schedules an asyncio
-        task on the running event loop, so it must be called from within
-        an async context (a running loop).
-        """
-        job_id = str(uuid.uuid4())
-        job = UploadJob(job_id=job_id, total=len(files))
-        self._jobs[job_id] = job
-
-        self.job_tasks[job_id] = asyncio.create_task(
-            self._run_upload_job(job, files, extra_args)
-        )
-        return job_id
-
-    async def _run_upload_job(
-        self, job: UploadJob, files: Sequence[tuple], extra_args: Optional[dict]
-    ):
-        async def _upload_and_track(local_path, key):
-            result = await self.upload_file(local_path, key, extra_args)
-            if result.success:
-                job.completed += 1
-            else:
-                job.failed += 1
-            job.results.append(result)
-
-        await asyncio.gather(
-            *(_upload_and_track(local_path, key) for local_path, key in files)
-        )
-        job.done = True
-
-        if job.job_id in self.job_tasks:
-            del self.job_tasks[job.job_id]
-
-        async def clean_up_with_delay():
-            await asyncio.sleep(30)
-            self.clear_job(job.job_id)
-
-        asyncio.create_task(clean_up_with_delay())
-
-    def get_job_status(self, job_id: str) -> Optional[UploadJob]:
-        """Returns the current UploadJob, or None if job_id is unknown."""
-        return self._jobs.get(job_id)
-
-    async def wait_for_job(self, job_id: str, poll_interval: float = 0.5) -> UploadJob:
-        """Block (async) until the given job finishes, then return it."""
-        job = self._jobs.get(job_id)
-        if job is None:
-            raise KeyError(f"Unknown job_id: {job_id}")
-        while not job.done:
-            await asyncio.sleep(poll_interval)
-        return job
-
-    def clear_job(self, job_id: str):
-        """Drop a finished job from memory once you're done polling it."""
-        self._jobs.pop(job_id, None)
-
     async def download_files(self, files: Sequence[tuple]) -> list:
         """files: (key, local_path) pairs"""
         tasks = [self.download_file(key, local_path) for key, local_path in files]
         return await asyncio.gather(*tasks)
-
-    # ---------- Convenience ----------
-
-    async def upload_directory(
-        self, local_dir: str, prefix: str = "", pattern: str = "*"
-    ) -> list:
-        """Upload every file under local_dir (recursively) to bucket/prefix,
-        preserving relative paths as the S3 key suffix."""
-        local_dir = Path(local_dir)
-        pairs = []
-        for path in local_dir.rglob(pattern):
-            if path.is_file():
-                rel = path.relative_to(local_dir).as_posix()
-                key = f"{prefix.rstrip('/')}/{rel}" if prefix else rel
-                pairs.append((str(path), self._prefixed(key)))
-        return await self.upload_files(pairs)
 
     async def list_objects(self, prefix: str = "") -> Dict:
         """Paginated list, returns list of objects and common prefixes (directories)"""
