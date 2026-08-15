@@ -17,7 +17,12 @@ import {
   sendUnlike,
 } from "../api";
 import toast from "react-hot-toast";
-import { COLORS, SAIL_MSG_URL, VIDEO_EXT_LIST } from "../consts";
+import {
+  AUDIO_EXT_LIST,
+  COLORS,
+  SAIL_MSG_URL,
+  VIDEO_EXT_LIST,
+} from "../consts";
 import { Favorite, FavoriteBorder, PermMedia } from "@mui/icons-material";
 import moment from "moment";
 import { useParams, useSearchParams } from "react-router-dom";
@@ -28,6 +33,7 @@ import { UserContext } from "../App";
 
 export const MediaContainer = ({
   isVideo,
+  isAudio,
   maxHeight = "min(60vh, 400px)",
   maxWidth = "min(95vw, 800px)",
   defaultVolume = 0.5,
@@ -35,6 +41,7 @@ export const MediaContainer = ({
   isSpoiler = false,
 }: {
   isVideo: boolean;
+  isAudio: boolean;
   maxHeight?: string;
   maxWidth?: string;
   defaultVolume?: number;
@@ -52,7 +59,7 @@ export const MediaContainer = ({
         y: 0,
       },
     },
-    [url]
+    [url],
   );
   const [spoilerFilter, setSpoilerFilter] = useState(isSpoiler);
   return (
@@ -73,7 +80,7 @@ export const MediaContainer = ({
             Show Spoiler
           </Button>
         )}
-        {isVideo ? (
+        {isVideo && (
           <Box
             sx={{
               boxShadow: "0px 0px 30px rgba(255, 255, 255, 0.4);",
@@ -85,6 +92,7 @@ export const MediaContainer = ({
             src={url}
             controls
             autoPlay={!spoilerFilter}
+            crossOrigin="anonymous"
             style={{
               maxWidth,
               maxHeight,
@@ -94,7 +102,31 @@ export const MediaContainer = ({
             }}
             loop
           />
-        ) : (
+        )}
+        {isAudio && (
+          <Box
+            sx={{
+              boxShadow: "0px 0px 30px rgba(255, 255, 255, 0.4);",
+            }}
+            component="audio"
+            onLoadStart={(e: any) => {
+              e.target.volume = defaultVolume;
+            }}
+            src={url}
+            controls
+            autoPlay={!spoilerFilter}
+            crossOrigin="anonymous"
+            style={{
+              maxWidth,
+              maxHeight,
+              ...(spoilerFilter && {
+                filter: "blur(10px)",
+              }),
+            }}
+            loop
+          />
+        )}
+        {!isVideo && !isAudio && (
           <Box
             sx={{
               boxShadow: "0px 0px 30px rgba(255, 255, 255, 0.4);",
@@ -153,7 +185,7 @@ const Media = () => {
       const [res, status] = await getAttachment(
         token,
         viewAttachmentId,
-        requestedYear
+        requestedYear,
       );
       if (status !== 200) {
         toast.error("Failed to get media.");
@@ -174,7 +206,7 @@ const Media = () => {
         return;
       }
       const likes = res.attachments.map(
-        ({ attachment_id }: { attachment_id: string }) => attachment_id
+        ({ attachment_id }: { attachment_id: string }) => attachment_id,
       );
       setUserLikes(likes);
       setFetchedInfo(likes);
@@ -191,16 +223,15 @@ const Media = () => {
     setLikeAdjustment(0);
   }, [mediaInfo?.attachment_id, fetchedInfo]);
 
-  const isVideo = useMemo(() => {
+  const [isVideo, isAudio] = useMemo(() => {
     if (!mediaInfo) {
-      return false;
+      return [false, false];
     }
     const fileNameParts = mediaInfo?.file_name?.toLowerCase()?.split(".") ?? [
       "",
     ];
-    return VIDEO_EXT_LIST.includes(
-      `.${fileNameParts[fileNameParts.length - 1]}`
-    );
+    const ext = `.${fileNameParts[fileNameParts.length - 1]}`;
+    return [VIDEO_EXT_LIST.includes(ext), AUDIO_EXT_LIST.includes(ext)];
   }, [mediaInfo?.file_name]);
 
   const mediaCaption = useMemo(() => {
@@ -311,6 +342,7 @@ const Media = () => {
               >
                 <MediaContainer
                   isVideo={isVideo}
+                  isAudio={isAudio}
                   url={mediaInfo.url}
                   isSpoiler={mediaInfo.file_name.startsWith("SPOILER_")}
                 />
@@ -354,7 +386,7 @@ const Media = () => {
                     }}
                     onClick={() => {
                       navigator.clipboard.writeText(
-                        `${window.location.origin}/media/view/${mediaInfo.attachment_id}?year=${year}`
+                        `${window.location.origin}/media/view/${mediaInfo.attachment_id}?year=${year}`,
                       );
                       toast.success("Copied permalink to clipboard");
                     }}

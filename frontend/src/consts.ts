@@ -191,6 +191,8 @@ export const VIDEO_EXT_LIST = [
   ".mod",
 ];
 
+export const AUDIO_EXT_LIST = [".mp3", ".wav", ".ogg", ".m4a", ".aac", ".webm"];
+
 export const PHOTO_EXT_LIST = [
   ".jpg",
   ".jpeg",

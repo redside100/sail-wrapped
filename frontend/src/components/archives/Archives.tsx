@@ -1,17 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
-import { getDriveObjects } from "../api";
+import { useContext, useEffect, useMemo, useState } from "react";
+import { getDriveObjects } from "../../api";
 import toast from "react-hot-toast";
 import { animated, useSprings } from "@react-spring/web";
-import {
-  Box,
-  Grid2,
-  Pagination,
-  Stack,
-  Tooltip,
-  Typography,
-} from "@mui/material";
+import { Box, Grid2, Pagination, Stack, Typography } from "@mui/material";
 import {
   ArrowBack,
+  AudioFile,
   FolderCopy,
   InsertDriveFile,
   Photo,
@@ -22,22 +16,18 @@ import {
   getDriveSrc,
   getObjectName,
   usePagination,
-} from "../util";
-import { LoadingAnimation } from "./LoadingPage";
-import { COLORS, PHOTO_EXT_LIST, VIDEO_EXT_LIST } from "../consts";
+} from "../../util";
+import { LoadingAnimation } from "../LoadingPage";
+import {
+  AUDIO_EXT_LIST,
+  COLORS,
+  PHOTO_EXT_LIST,
+  VIDEO_EXT_LIST,
+} from "../../consts";
 import MultiFileUploader from "./FileUploader";
-
-type DriveObject = {
-  key: string;
-  created: string;
-  is_directory: boolean;
-  author: {
-    avatar: string;
-    global_name: string;
-    username: string;
-    id: string;
-  };
-};
+import MediaViewer from "./MediaViewer";
+import { DriveObject } from "./types";
+import { DriveContext } from "./DriveContext";
 
 const ArchiveItem = ({
   driveObject,
@@ -46,8 +36,13 @@ const ArchiveItem = ({
   driveObject: DriveObject;
   navigatePrefix: (key: string) => void;
 }) => {
-  const isImage = useMemo(
-    () => PHOTO_EXT_LIST.some((ext: string) => driveObject.key.endsWith(ext)),
+  const { setActiveDriveObject } = useContext(DriveContext);
+  const [isImage, isVideo, isAudio] = useMemo(
+    () => [
+      PHOTO_EXT_LIST.some((ext: string) => driveObject.key.endsWith(ext)),
+      VIDEO_EXT_LIST.some((ext: string) => driveObject.key.endsWith(ext)),
+      AUDIO_EXT_LIST.some((ext: string) => driveObject.key.endsWith(ext)),
+    ],
     [driveObject],
   );
 
@@ -56,16 +51,16 @@ const ArchiveItem = ({
       return <FolderCopy sx={{ color: "white", fontSize: 20 }} />;
     } else if (isImage) {
       return <Photo sx={{ color: "white", fontSize: 20 }} />;
-    } else if (
-      VIDEO_EXT_LIST.some((ext: string) => driveObject.key.endsWith(ext))
-    ) {
+    } else if (isVideo) {
       return <VideoFile sx={{ color: "white", fontSize: 20 }} />;
+    } else if (isAudio) {
+      return <AudioFile sx={{ color: "white", fontSize: 20 }} />;
     }
 
     return <InsertDriveFile sx={{ color: "white", fontSize: 20 }} />;
   }, [driveObject]);
 
-  const component = (
+  return (
     <Grid2
       size={{
         xs: 6,
@@ -90,7 +85,9 @@ const ArchiveItem = ({
         onClick={() => {
           if (driveObject.is_directory) {
             navigatePrefix(getDisplayKey(driveObject.key));
+            return;
           }
+          setActiveDriveObject(driveObject);
         }}
       >
         <Stack direction="x" gap={0.5} alignItems="center">
@@ -122,25 +119,6 @@ const ArchiveItem = ({
       </Stack>
     </Grid2>
   );
-
-  if (!driveObject.is_directory) {
-    const created = new Date(driveObject.created).toLocaleString();
-    return (
-      <Tooltip
-        title={
-          <>
-            <Typography>Created {created}</Typography>
-            <Typography>Uploaded by @{driveObject.author.username}</Typography>
-          </>
-        }
-        enterDelay={500}
-        arrow
-      >
-        {component}
-      </Tooltip>
-    );
-  }
-  return component;
 };
 const Archives = () => {
   const [loading, setLoading] = useState(false);
@@ -176,6 +154,9 @@ const Archives = () => {
       ),
     [driveObjects],
   );
+  const [activeDriveObject, setActiveDriveObject] = useState<
+    DriveObject | undefined
+  >(undefined);
 
   const [visibleFileObjects, totalPages, page, setPage] = usePagination(
     fileObjects,
@@ -210,7 +191,13 @@ const Archives = () => {
   }, [prefix]);
 
   return (
-    <>
+    <DriveContext.Provider
+      value={{
+        activeDriveObject,
+        setActiveDriveObject,
+        visibleObjects: visibleFileObjects,
+      }}
+    >
       <Stack justifyContent="center" alignItems="center" p={3}>
         <animated.div style={headerStyle[0]}>
           <Box display="flex" gap={1} alignItems="center" mt={2}>
@@ -253,10 +240,12 @@ const Archives = () => {
                 />
                 <Typography>{displayPrefix}</Typography>
               </Box>
-              <MultiFileUploader
-                prefix={prefix}
-                onUploadFinished={fetchPrefixContents}
-              />
+              <Box display="flex" gap={1}>
+                <MultiFileUploader
+                  prefix={prefix}
+                  onUploadFinished={fetchPrefixContents}
+                />
+              </Box>
             </Box>
             {loading && (
               <Box mt={3}>
@@ -313,7 +302,8 @@ const Archives = () => {
       >
         <img src="./pusheen_book.png" width="100%" />
       </Box>
-    </>
+      <MediaViewer />
+    </DriveContext.Provider>
   );
 };
 

@@ -29,7 +29,7 @@ import TimeMachine from "./components/TimeMachine";
 import Secret from "./components/Secret";
 import YearSelector from "./components/YearSelector";
 import Charts from "./components/Charts";
-import Archives from "./components/Archives";
+import Archives from "./components/archives/Archives";
 
 const DynamicMenuItem = ({
   to,
