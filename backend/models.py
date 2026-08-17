@@ -204,3 +204,8 @@ class DriveMetadata(BaseModel):
 
 class DriveDeleteRequest(BaseModel):
     keys: List[str]
+
+
+class DriveDirectoryCreateRequest(BaseModel):
+    prefix: str
+    name: str

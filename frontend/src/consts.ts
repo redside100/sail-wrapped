@@ -156,7 +156,6 @@ export const VIDEO_EXT_LIST = [
   ".flv",
   ".vob",
   ".ogv",
-  ".ogg",
   ".rrc",
   ".gifv",
   ".mng",

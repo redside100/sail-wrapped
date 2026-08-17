@@ -1,5 +1,9 @@
 import { useContext, useEffect, useMemo, useState } from "react";
-import { deleteDriveObjects, getDriveObjects } from "../../api";
+import {
+  createDriveFolder,
+  deleteDriveObjects,
+  getDriveObjects,
+} from "../../api";
 import toast from "react-hot-toast";
 import { animated, useSprings } from "@react-spring/web";
 import {
@@ -14,6 +18,7 @@ import {
   ArrowBack,
   AudioFile,
   Close,
+  CreateNewFolder,
   Delete,
   FolderCopy,
   InsertDriveFile,
@@ -38,6 +43,7 @@ import MediaViewer from "./MediaViewer";
 import { DriveObject } from "./types";
 import { DriveContext } from "./DriveContext";
 import ConfirmationDialog from "./ConfirmationDialog";
+import FolderCreationDialog from "./FolderCreationDialog";
 
 const ArchiveItem = ({
   driveObject,
@@ -106,12 +112,8 @@ const ArchiveItem = ({
           userSelect: "none",
         }}
         onClick={(e: React.MouseEvent) => {
-          if (driveObject.is_directory) {
-            navigatePrefix(getDisplayKey(driveObject.key));
-            return;
-          }
           // Selection add
-          if (e.ctrlKey) {
+          if (e.ctrlKey || (e.shiftKey && driveObject.is_directory)) {
             if (!isSelected) {
               setSelectedKeys([...selectedKeys, driveObject.key]);
             } else {
@@ -119,6 +121,11 @@ const ArchiveItem = ({
                 selectedKeys.filter((key: string) => key !== driveObject.key),
               );
             }
+            return;
+          }
+
+          if (driveObject.is_directory) {
+            navigatePrefix(getDisplayKey(driveObject.key));
             return;
           }
 
@@ -270,6 +277,7 @@ const Archives = () => {
   }, [prefix]);
 
   const [deletionDialogOpen, setDeletionDialogOpen] = useState(false);
+  const [createFolderDialogOpen, setCreateFolderDialogOpen] = useState(false);
 
   return (
     <DriveContext.Provider
@@ -329,6 +337,15 @@ const Archives = () => {
                   prefix={prefix}
                   onUploadFinished={fetchPrefixContents}
                 />
+                <Tooltip title={<Typography>Create Directory</Typography>}>
+                  <CreateNewFolder
+                    sx={{
+                      color: "white",
+                      "&:hover": { opacity: 0.8, cursor: "pointer" },
+                    }}
+                    onClick={() => setCreateFolderDialogOpen(true)}
+                  />
+                </Tooltip>
               </Box>
             </Box>
             {loading && (
@@ -427,8 +444,10 @@ const Archives = () => {
         onClose={() => setDeletionDialogOpen(false)}
         body={
           <>
-            Are you sure you want to delete {selectedFileKeys.length} file
-            {selectedFileKeys.length === 1 ? "" : "s"}?
+            <Typography>
+              Are you sure you want to delete {selectedFileKeys.length} file
+              {selectedFileKeys.length === 1 ? "" : "s"}?
+            </Typography>
           </>
         }
         title={`Delete file${selectedFileKeys.length === 1 ? "" : "s"}?`}
@@ -442,12 +461,32 @@ const Archives = () => {
           const status = await deleteDriveObjects(selectedFileKeys, token);
           if (status !== 200) {
             toast.error("Failed to delete items.");
+            toast.remove(toastId);
             return;
           }
           toast.remove(toastId);
           toast.success(
             `Deleted ${selectedFileKeys.length} item${selectedFileKeys.length === 1 ? "" : "s"}!`,
           );
+          setSelectedFileKeys([]);
+          await fetchPrefixContents();
+        }}
+      />
+      <FolderCreationDialog
+        open={createFolderDialogOpen}
+        onClose={() => setCreateFolderDialogOpen(false)}
+        onFolderCreated={async (name: string) => {
+          setCreateFolderDialogOpen(false);
+          const token = localStorage.getItem("access_token") ?? "";
+          const toastId = toast.loading(`Creating folder...`);
+          const status = await createDriveFolder(prefix, name, token);
+          if (status !== 200) {
+            toast.error("Failed to create folder.");
+            toast.remove(toastId);
+            return;
+          }
+          toast.remove(toastId);
+          toast.success("Folder created!");
           setSelectedFileKeys([]);
           await fetchPrefixContents();
         }}

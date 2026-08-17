@@ -1,4 +1,4 @@
-import { Backdrop, Box, Stack, Typography } from "@mui/material";
+import { Backdrop, Stack, Typography } from "@mui/material";
 import { DriveContext } from "./DriveContext";
 import { useContext, useMemo } from "react";
 import { AUDIO_EXT_LIST, PHOTO_EXT_LIST, VIDEO_EXT_LIST } from "../../consts";

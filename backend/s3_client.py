@@ -28,6 +28,7 @@ from typing import Dict, Optional, Sequence
 import aioboto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
+from fastapi import HTTPException
 from pydantic import BaseModel, Field
 
 from models import DriveObject
@@ -244,6 +245,42 @@ class AsyncS3Client:
                 return False
             raise
 
+    async def create_directory(self, prefix: str, name: str) -> UploadResult:
+        """
+        Create a 'directory' at an existing prefix, if it doesn't already exist.
+
+        S3 has no real directories — this creates a zero-byte marker object
+        with a trailing slash, which is what `list_objects`'s CommonPrefixes
+        logic (and most S3 browser UIs) recognize as a folder.
+        """
+        self._require_client()
+        if not prefix.endswith("/"):
+            prefix += "/"
+
+        if not name.endswith("/"):
+            name += "/"
+
+        if not await self.file_exists(self._prefixed(prefix)):
+            raise HTTPException(status_code=404, detail="Prefix does not exist")
+
+        key = self._prefixed(f"{prefix}{name}")
+        if await self.file_exists(key):
+            raise HTTPException(status_code=409, detail="Object already exists")
+
+        async with self._semaphore:
+            try:
+                await self._s3.put_object(
+                    Bucket=self.bucket,
+                    Key=key,
+                    Body=b"",
+                    ACL="public-read",
+                )
+                logger.info("Created directory s3://%s/%s", self.bucket, key)
+                return UploadResult(local_path="", key=key, success=True)
+            except ClientError as e:
+                logger.error("Failed to create directory %s: %s", key, e)
+                return UploadResult(local_path="", key=key, success=False, error=str(e))
+
     # ---------- Delete operations ----------
 
     async def delete_file(self, key: str) -> UploadResult:
@@ -265,7 +302,20 @@ class AsyncS3Client:
         chunks concurrently. Returns a list of UploadResult, one per key.
         """
         self._require_client()
+
         keys = [self._prefixed(k) for k in keys]
+
+        expanded_keys = keys.copy()
+
+        # Add all nested keys for directories
+        for key in expanded_keys:
+            if not key.endswith("/"):
+                continue
+
+            paginator = self._s3.get_paginator("list_objects_v2")
+            async for page in paginator.paginate(Bucket=self.bucket, Prefix=key):
+                for object in page.get("Contents", []):
+                    expanded_keys.append(object["Key"])
 
         async def _delete_batch(batch: list) -> tuple:
             async with self._semaphore:

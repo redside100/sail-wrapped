@@ -260,3 +260,22 @@ export const deleteDriveObjects = async (keys: string[], token: string) => {
   });
   return res.status;
 };
+
+export const createDriveFolder = async (
+  prefix: string,
+  name: string,
+  token: string,
+) => {
+  const res = await fetch(`${API_BASE}/drive/directory`, {
+    method: "POST",
+    body: JSON.stringify({
+      prefix,
+      name,
+    }),
+    headers: {
+      "Content-Type": "application/json",
+      token,
+    },
+  });
+  return res.status;
+};

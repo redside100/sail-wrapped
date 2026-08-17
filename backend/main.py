@@ -424,6 +424,14 @@ async def drive_upload(
 @app.delete("/drive/delete")
 async def drive_delete(
     request: DriveDeleteRequest, token: str = Depends(get_current_token)
-):
+) -> Response:
     await s3_client.delete_files(request.keys)
+    return Response(status_code=200)
+
+
+@app.post("/drive/directory")
+async def drive_create_directory(
+    request: DriveDirectoryCreateRequest, token: str = Depends(get_current_token)
+) -> Response:
+    await s3_client.create_directory(request.prefix, request.name)
     return Response(status_code=200)
