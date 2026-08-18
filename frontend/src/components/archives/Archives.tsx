@@ -442,15 +442,17 @@ const Archives = () => {
       <ConfirmationDialog
         open={deletionDialogOpen}
         onClose={() => setDeletionDialogOpen(false)}
-        body={
-          <>
-            <Typography>
-              Are you sure you want to delete {selectedFileKeys.length} file
-              {selectedFileKeys.length === 1 ? "" : "s"}?
-            </Typography>
-          </>
-        }
-        title={`Delete file${selectedFileKeys.length === 1 ? "" : "s"}?`}
+        body={(() => {
+          return (
+            <>
+              <Typography>
+                Are you sure you want to delete {selectedFileKeys.length} item
+                {selectedFileKeys.length === 1 ? "" : "s"}?
+              </Typography>
+            </>
+          );
+        })()}
+        title={`Delete item${selectedFileKeys.length === 1 ? "" : "s"}?`}
         confirmLabel="Delete"
         onConfirm={async () => {
           setDeletionDialogOpen(false);

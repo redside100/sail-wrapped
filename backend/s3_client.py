@@ -308,14 +308,19 @@ class AsyncS3Client:
         expanded_keys = keys.copy()
 
         # Add all nested keys for directories
-        for key in expanded_keys:
+        for key in keys:
             if not key.endswith("/"):
                 continue
 
             paginator = self._s3.get_paginator("list_objects_v2")
-            async for page in paginator.paginate(Bucket=self.bucket, Prefix=key):
+            async for page in paginator.paginate(
+                Bucket=self.bucket, Prefix=self._prefixed(key)
+            ):
                 for object in page.get("Contents", []):
                     expanded_keys.append(object["Key"])
+
+        if "/" in expanded_keys:
+            expanded_keys.remove("/")
 
         async def _delete_batch(batch: list) -> tuple:
             async with self._semaphore:
@@ -335,7 +340,7 @@ class AsyncS3Client:
 
         results = []
         chunk_size = 1000
-        keys = list(keys)
+        keys = list(expanded_keys)
         chunks = [keys[i : i + chunk_size] for i in range(0, len(keys), chunk_size)]
 
         batch_results = await asyncio.gather(*(_delete_batch(c) for c in chunks))
