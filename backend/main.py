@@ -19,6 +19,7 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import async_db
+from preview import generate_preview, is_previewable
 from s3_client import AsyncS3Client
 from consts import ATTACHMENT_EXCLUDE_REPEAT_COUNT
 from util import (
@@ -373,6 +374,9 @@ async def drive_upload(
     if not prefix.endswith("/"):
         prefix += "/"
 
+    if not await s3_client.file_exists(prefix):
+        raise HTTPException(status_code=404, detail="Prefix does not exist")
+
     if not overwrite:
         existing_objects, _ = await s3_client.list_objects(prefix)
 
@@ -390,33 +394,68 @@ async def drive_upload(
     user = user_info["user"]
 
     async with aiofiles.tempfile.TemporaryDirectory() as temp_dir:
+        async with aiofiles.tempfile.TemporaryDirectory() as preview_dir:
 
-        async def write_tempfile(file: UploadFile):
-            file_path = os.path.join(temp_dir, os.path.basename(file.filename))
-            async with aiofiles.open(file_path, "wb+") as f:
-                while content := await file.read(65536):
-                    await f.write(content)
+            # Write uploaded files to temp directory
+            async def write_tempfile(file: UploadFile):
+                file_path = os.path.join(temp_dir, os.path.basename(file.filename))
+                async with aiofiles.open(file_path, "wb+") as f:
+                    while content := await file.read(65536):
+                        await f.write(content)
 
-        tasks = [write_tempfile(file) for file in files]
-        await asyncio.gather(*tasks)
+            tasks = [write_tempfile(file) for file in files]
+            await asyncio.gather(*tasks)
 
-        file_paths = []
-        for file in files:
-            local_file = os.path.join(temp_dir, os.path.basename(file.filename))
-            key = prefix + os.path.basename(file.filename)
-            file_paths.append((local_file, key))
+            # Compile preview tasks, file paths
+            preview_tasks = []
+            file_paths = []
+            preview_paths = []
+            for file in files:
+                local_file = os.path.join(temp_dir, os.path.basename(file.filename))
+                key = prefix + os.path.basename(file.filename)
+                file_paths.append((local_file, key))
+                if is_previewable(local_file):
+                    dest_file = os.path.join(
+                        preview_dir, os.path.basename(file.filename)
+                    )
+                    # Overwrite extension with webp
+                    pre, _ = os.path.splitext(dest_file)
+                    dest_file = pre + ".webp"
 
-        await s3_client.upload_files(
-            file_paths,
-            extra_args={
-                "Metadata": DriveMetadata(
-                    author_id=user.get("id", "0"),
-                    author_username=user.get("username", "Unknown"),
-                    author_avatar=user.get("avatar", ""),
-                    author_global_name=user.get("global_name", "Unknown"),
-                ).model_dump()
-            },
-        )
+                    preview_key = prefix + os.path.basename(dest_file)
+                    preview_paths.append((dest_file, preview_key))
+
+                    preview_tasks.append(generate_preview(local_file, dest_file))
+
+            # Generate previews
+            await asyncio.gather(*preview_tasks)
+
+            # Upload files and previews
+            await asyncio.gather(
+                s3_client.upload_files(
+                    file_paths,
+                    extra_args={
+                        "Metadata": DriveMetadata(
+                            author_id=user.get("id", "0"),
+                            author_username=user.get("username", "Unknown"),
+                            author_avatar=user.get("avatar", ""),
+                            author_global_name=user.get("global_name", "Unknown"),
+                        ).model_dump()
+                    },
+                ),
+                s3_client.upload_files(
+                    preview_paths,
+                    extra_args={
+                        "Metadata": DriveMetadata(
+                            author_id=user.get("id", "0"),
+                            author_username=user.get("username", "Unknown"),
+                            author_avatar=user.get("avatar", ""),
+                            author_global_name=user.get("global_name", "Unknown"),
+                        ).model_dump()
+                    },
+                    is_preview=True,
+                ),
+            )
 
     return Response(status_code=200)
 
@@ -425,7 +464,18 @@ async def drive_upload(
 async def drive_delete(
     request: DriveDeleteRequest, token: str = Depends(get_current_token)
 ) -> Response:
-    await s3_client.delete_files(request.keys)
+    preview_keys = []
+    for key in request.keys:
+        pre, ext = os.path.splitext(key)
+        if ext:
+            preview_keys.append(pre + ".webp")
+        else:
+            preview_keys.append(key)
+
+    await asyncio.gather(
+        s3_client.delete_files(preview_keys, is_preview=True),
+        s3_client.delete_files(request.keys),
+    )
     return Response(status_code=200)
 
 

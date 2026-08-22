@@ -21,7 +21,6 @@ Usage:
 
 import asyncio
 import logging
-import uuid
 from pathlib import Path
 from typing import Dict, Optional, Sequence
 
@@ -31,7 +30,6 @@ from botocore.exceptions import ClientError
 from fastapi import HTTPException
 from pydantic import BaseModel, Field
 
-from models import DriveObject
 from consts import S3_SECRET, S3_ACCESS_KEY
 
 logger = logging.getLogger(__name__)
@@ -41,6 +39,7 @@ REGION = "tor1"
 ENDPOINT = f"https://{REGION}.digitaloceanspaces.com"
 BUCKET_NAME = "redside"
 PREFIX = "sw-drive"
+PREVIEW_PREFIX = "sw-drive-preview"
 
 
 class UploadResult(BaseModel):
@@ -91,6 +90,7 @@ class AsyncS3Client:
         max_pool_connections: Optional[int] = None,
         endpoint_url: Optional[str] = ENDPOINT,
         key_prefix: str = PREFIX,
+        preview_key_prefix: str = PREVIEW_PREFIX,
         aws_access_key_id: str = S3_ACCESS_KEY,
         aws_secret_access_key: str = S3_SECRET,
         **client_kwargs,
@@ -100,6 +100,7 @@ class AsyncS3Client:
         self.endpoint_url = endpoint_url
         self.max_concurrency = max_concurrency
         self.key_prefix = key_prefix.strip("/")
+        self.preview_key_prefix = preview_key_prefix.strip("/")
         self.client_kwargs = {
             "aws_access_key_id": aws_access_key_id,
             "aws_secret_access_key": aws_secret_access_key,
@@ -118,10 +119,20 @@ class AsyncS3Client:
         self._jobs: dict = {}  # job_id -> UploadJob
         self.job_tasks: dict = {}
 
-    def _prefixed(self, key: str) -> str:
+    def _prefixed(self, key: str, preview: bool = False) -> str:
         key = key.lstrip("/")
-        if self.key_prefix and not key.startswith(f"{self.key_prefix}/"):
-            return f"{self.key_prefix}/{key}"
+
+        # Strip whichever known prefix is already present, so callers can
+        # pass either a bare key or an already-prefixed key (from either
+        # namespace) without ending up with both prefixes stacked.
+        for known_prefix in (self.key_prefix, self.preview_key_prefix):
+            if known_prefix and key.startswith(f"{known_prefix}/"):
+                key = key[len(known_prefix) + 1 :]
+                break
+
+        prefix = self.preview_key_prefix if preview else self.key_prefix
+        if prefix:
+            return f"{prefix}/{key}"
         return key
 
     async def connect(self):
@@ -153,10 +164,14 @@ class AsyncS3Client:
     # ---------- Single file operations ----------
 
     async def upload_file(
-        self, local_path: str, key: str, extra_args: Optional[dict] = None
+        self,
+        local_path: str,
+        key: str,
+        extra_args: Optional[dict] = None,
+        is_preview: bool = False,
     ) -> UploadResult:
         self._require_client()
-        key = self._prefixed(key)
+        key = self._prefixed(key, is_preview)
         async with self._semaphore:
             try:
                 if not extra_args:
@@ -198,6 +213,7 @@ class AsyncS3Client:
         self,
         files: Sequence[tuple],  # (local_path, key) pairs
         extra_args: Optional[dict] = None,
+        is_preview: bool = False,
     ) -> list:
         """
         Upload multiple files concurrently (bounded by max_concurrency).
@@ -205,7 +221,8 @@ class AsyncS3Client:
         Individual failures don't stop the rest of the batch.
         """
         tasks = [
-            self.upload_file(local_path, key, extra_args) for local_path, key in files
+            self.upload_file(local_path, key, extra_args, is_preview)
+            for local_path, key in files
         ]
         return await asyncio.gather(*tasks)
 
@@ -282,11 +299,10 @@ class AsyncS3Client:
                 return UploadResult(local_path="", key=key, success=False, error=str(e))
 
     # ---------- Delete operations ----------
-
-    async def delete_file(self, key: str) -> UploadResult:
+    async def delete_file(self, key: str, preview: bool) -> UploadResult:
         """Delete a single object."""
         self._require_client()
-        key = self._prefixed(key)
+        key = self._prefixed(key, preview)
         try:
             await self._s3.delete_object(Bucket=self.bucket, Key=key)
             logger.info("Deleted s3://%s/%s", self.bucket, key)
@@ -295,26 +311,28 @@ class AsyncS3Client:
             logger.error("Failed to delete %s: %s", key, e)
             return UploadResult(local_path="", key=key, success=False, error=str(e))
 
-    async def delete_files(self, keys: Sequence[str]) -> list:
+    async def delete_files(self, keys: Sequence[str], is_preview: bool = False) -> list:
         """
         Delete multiple objects using S3's batch delete_objects API
         (up to 1000 keys per request), chunking automatically and running
         chunks concurrently. Returns a list of UploadResult, one per key.
+
+        Also deletes preview keys under the preview prefix.
         """
         self._require_client()
 
-        keys = [self._prefixed(k) for k in keys]
-
-        expanded_keys = keys.copy()
+        expanded_keys = []
 
         # Add all nested keys for directories
         for key in keys:
+            expanded_keys.append(self._prefixed(key, is_preview))
+
             if not key.endswith("/"):
                 continue
 
             paginator = self._s3.get_paginator("list_objects_v2")
             async for page in paginator.paginate(
-                Bucket=self.bucket, Prefix=self._prefixed(key)
+                Bucket=self.bucket, Prefix=self._prefixed(key, is_preview)
             ):
                 for object in page.get("Contents", []):
                     expanded_keys.append(object["Key"])
@@ -354,69 +372,3 @@ class AsyncS3Client:
                 )
 
         return results
-
-
-# ---------------- Example usage ----------------
-
-
-async def _example():
-    logging.basicConfig(level=logging.INFO)
-
-    s3 = AsyncS3Client()  # uses DO Spaces defaults, no args needed
-    await s3.connect()
-    try:
-        # single file
-        result = await s3.upload_file("report.pdf", "reports/report.pdf")
-        print(result)
-
-        # multiple files concurrently
-        results = await s3.upload_files(
-            [
-                ("data/a.csv", "datasets/a.csv"),
-                ("data/b.csv", "datasets/b.csv"),
-                ("data/c.csv", "datasets/c.csv"),
-            ]
-        )
-        for r in results:
-            status = "OK" if r.success else f"FAILED: {r.error}"
-            print(f"{r.local_path} -> {r.key}: {status}")
-
-        # whole directory
-        await s3.upload_directory("data/", prefix="datasets")
-
-        # background job with progress polling
-        job_id = s3.start_upload_job(
-            [
-                ("data/x.csv", "datasets/x.csv"),
-                ("data/y.csv", "datasets/y.csv"),
-                ("data/z.csv", "datasets/z.csv"),
-            ]
-        )
-        while True:
-            status = s3.get_job_status(job_id)
-            print(
-                f"progress: {status.progress_pct}% ({status.completed} ok, {status.failed} failed)"
-            )
-            if status.done:
-                break
-            await asyncio.sleep(0.5)
-        s3.clear_job(job_id)
-
-        # list
-        keys = await s3.list_objects(prefix="datasets")
-        print(keys)
-
-        # delete single
-        await s3.delete_file("datasets/a.csv")
-
-        # delete multiple
-        del_results = await s3.delete_files(["datasets/b.csv", "datasets/c.csv"])
-        for r in del_results:
-            status = "OK" if r.success else f"FAILED: {r.error}"
-            print(f"delete {r.key}: {status}")
-    finally:
-        await s3.close()
-
-
-if __name__ == "__main__":
-    asyncio.run(_example())

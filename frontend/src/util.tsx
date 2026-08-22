@@ -139,3 +139,20 @@ export const getDriveSrc = (key: string) => {
   }
   return `${CDN_BASE}/${key}`;
 };
+
+export const getDrivePreview = (key: string) => {
+  let previewKey = key;
+  const drivePrefix = "sw-drive/";
+  const previewPrefix = "sw-drive-preview/";
+
+  if (previewKey.startsWith("/")) {
+    previewKey = previewKey.substring(1);
+  }
+  if (previewKey.startsWith(drivePrefix)) {
+    previewKey = previewPrefix + previewKey.substring(drivePrefix.length);
+  }
+
+  previewKey = previewKey.replace(/\.[^./]+$/, "") + ".webp";
+
+  return `${CDN_BASE}/${previewKey}`;
+};

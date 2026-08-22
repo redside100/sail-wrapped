@@ -27,7 +27,7 @@ import {
 } from "@mui/icons-material";
 import {
   getDisplayKey,
-  getDriveSrc,
+  getDrivePreview,
   getObjectName,
   usePagination,
 } from "../../util";
@@ -175,7 +175,7 @@ const ArchiveItem = ({
           >
             <Box
               component="img"
-              src={getDriveSrc(driveObject.key)}
+              src={getDrivePreview(driveObject.key)}
               sx={{
                 width: "100%",
                 height: "100%",
